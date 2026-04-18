@@ -4,7 +4,6 @@ import {
   Package,
   Plus,
   ShoppingCart,
-  Upload,
   XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -81,20 +80,12 @@ export default function OrdersPage() {
         title="Orders"
         subtitle="Today's orders across all companies."
         action={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/orders/bulk-create">
-                <Upload className="h-4 w-4" />
-                Bulk Order
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link to="/orders/create">
-                <Plus className="h-4 w-4" />
-                Place Order
-              </Link>
-            </Button>
-          </div>
+          <Button asChild>
+            <Link to="/orders/create">
+              <Plus className="h-4 w-4" />
+              Place Order
+            </Link>
+          </Button>
         }
       />
 
@@ -197,16 +188,9 @@ export default function OrdersPage() {
                     className="transition-colors hover:bg-gray-50"
                   >
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">
-                          {order.employeeName}
-                        </span>
-                        {order.isBulkOrder && (
-                          <span className="inline-flex items-center rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-medium text-orange-700">
-                            BULK
-                          </span>
-                        )}
-                      </div>
+                      <span className="text-sm font-medium text-gray-900">
+                        {order.employeeName}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">
                       {order.companyName}

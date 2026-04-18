@@ -2,7 +2,6 @@ import type {
   Order,
   OrderFilters,
   CreateOrderInput,
-  CreateBulkOrderInput,
   KitchenPrepItem,
 } from '@/types/order.types'
 import type { OrderStatus } from '@/lib/constants'
@@ -82,30 +81,12 @@ let ordersState: Order[] = (() => {
       menuItemPrice: item.price,
       menuItemImageUrl: item.imageUrl,
       status,
-      isBulkOrder: false,
       date: d,
       createdAt: new Date(
         Date.now() - Math.floor(Math.random() * 3600000),
       ).toISOString(),
     })
   }
-
-  list.push({
-    id: uid(),
-    employeeName: 'Company Order',
-    companyId: '2',
-    companyName: 'GlobalTech Inc.',
-    departmentId: '',
-    departmentName: '—',
-    menuItemId: '1',
-    menuItemName: 'Chicken Rice',
-    menuItemPrice: 25000,
-    menuItemImageUrl: menuItems['1'].imageUrl,
-    status: 'new',
-    isBulkOrder: true,
-    date: d,
-    createdAt: new Date(Date.now() - 1800000).toISOString(),
-  })
 
   list.push({
     id: uid(),
@@ -120,7 +101,6 @@ let ordersState: Order[] = (() => {
     menuItemImageUrl: menuItems['3'].imageUrl,
     status: 'rejected',
     rejectionReason: 'Item no longer available',
-    isBulkOrder: false,
     date: d,
     createdAt: new Date(Date.now() - 2400000).toISOString(),
   })
@@ -178,34 +158,6 @@ export async function createOrder(input: CreateOrderInput): Promise<Order> {
     menuItemPrice: item.price * input.quantity,
     menuItemImageUrl: item.imageUrl,
     status: 'new',
-    isBulkOrder: false,
-    date: today(),
-    createdAt: new Date().toISOString(),
-  }
-  ordersState = [order, ...ordersState]
-  return order
-}
-
-export async function createBulkOrder(
-  input: CreateBulkOrderInput,
-): Promise<Order> {
-  await delay(600)
-  const item = menuItems[input.menuItemId]
-  if (!item) throw new Error('Menu item not found')
-
-  const order: Order = {
-    id: uid(),
-    employeeName: 'Company Order',
-    companyId: input.companyId,
-    companyName: companyNames[input.companyId],
-    departmentId: '',
-    departmentName: '—',
-    menuItemId: input.menuItemId,
-    menuItemName: item.name,
-    menuItemPrice: item.price * input.quantity,
-    menuItemImageUrl: item.imageUrl,
-    status: 'new',
-    isBulkOrder: true,
     date: today(),
     createdAt: new Date().toISOString(),
   }

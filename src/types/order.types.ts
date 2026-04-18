@@ -13,7 +13,6 @@ export interface Order {
   menuItemImageUrl?: string
   status: OrderStatus
   rejectionReason?: string
-  isBulkOrder: boolean
   date: string
   createdAt: string
 }
@@ -32,12 +31,6 @@ export interface CreateOrderInput {
   menuItemId: string
   quantity: number
   locationId: string
-}
-
-export interface CreateBulkOrderInput {
-  companyId: string
-  menuItemId: string
-  quantity: number
 }
 
 export interface KitchenPrepItem {

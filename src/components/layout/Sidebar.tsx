@@ -94,7 +94,7 @@ export default function Sidebar() {
   function isActive(path: string) {
     if (path === '/dashboard') return location.pathname === '/dashboard'
     if (path === '/orders/kitchen-prep') return location.pathname === '/orders/kitchen-prep'
-    if (path === '/orders') return location.pathname === '/orders' || location.pathname === '/orders/create' || location.pathname === '/orders/bulk-create'
+    if (path === '/orders') return location.pathname === '/orders' || location.pathname === '/orders/create'
     if (path === '/menus/calendar') return location.pathname === '/menus/calendar'
     if (path === '/menus/templates') return location.pathname === '/menus/templates'
     if (path === '/menus') return location.pathname === '/menus' || location.pathname === '/menus/create' || location.pathname.startsWith('/menus/') && location.pathname.endsWith('/edit')

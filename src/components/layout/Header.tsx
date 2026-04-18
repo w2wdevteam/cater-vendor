@@ -16,7 +16,6 @@ const routeLabels: Record<string, string> = {
   '/menus/templates': 'Menu Templates',
   '/orders': 'Orders',
   '/orders/create': 'Place Order',
-  '/orders/bulk-create': 'Bulk Order',
   '/orders/kitchen-prep': 'Kitchen Prep',
   '/companies': 'Companies',
   '/locations': 'Locations',

@@ -114,7 +114,12 @@ export async function createCompany(data: CompanyFormData): Promise<Company> {
   await delay(500)
   const company: Company = {
     id: uid(),
-    ...data,
+    name: data.name,
+    deliveryLocation: '',
+    contactName: data.contactName,
+    contactEmail: data.contactEmail ?? '',
+    contactPhone: data.contactPhone,
+    employeeCount: data.employeeCount ?? 0,
     selfManaged: false,
     status: 'active',
     deliveryWindowStart: '12:00',
@@ -128,7 +133,16 @@ export async function createCompany(data: CompanyFormData): Promise<Company> {
 export async function updateCompany(id: string, data: CompanyFormData): Promise<Company> {
   await delay(500)
   companiesState = companiesState.map((c) =>
-    c.id === id ? { ...c, ...data } : c,
+    c.id === id
+      ? {
+          ...c,
+          name: data.name,
+          contactName: data.contactName,
+          contactEmail: data.contactEmail ?? c.contactEmail,
+          contactPhone: data.contactPhone,
+          employeeCount: data.employeeCount ?? c.employeeCount,
+        }
+      : c,
   )
   const updated = companiesState.find((c) => c.id === id)
   if (!updated) throw new Error('Company not found')

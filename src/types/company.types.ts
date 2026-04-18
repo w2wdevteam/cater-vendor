@@ -29,11 +29,10 @@ export interface Department {
 
 export interface CompanyFormData {
   name: string
-  deliveryLocation: string
   contactName: string
-  contactEmail: string
+  contactEmail?: string
   contactPhone: string
-  employeeCount: number
+  employeeCount?: number
 }
 
 export interface CompanyFilters {

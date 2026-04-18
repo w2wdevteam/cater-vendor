@@ -17,11 +17,10 @@ import type { Company, CompanyFormData } from '@/types/company.types'
 
 const schema = z.object({
   name: z.string().min(1, 'Company name is required'),
-  deliveryLocation: z.string().min(1, 'Location is required'),
   contactName: z.string().min(1, 'Contact name is required'),
-  contactEmail: z.string().min(1, 'Email is required').email('Invalid email'),
+  contactEmail: z.string().email('Invalid email').optional().or(z.literal('')),
   contactPhone: z.string().min(1, 'Phone is required'),
-  employeeCount: z.number().min(1, 'Must have at least 1 employee'),
+  employeeCount: z.number().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -52,7 +51,6 @@ export default function CompanySheet({
     resolver: zodResolver(schema),
     defaultValues: {
       name: '',
-      deliveryLocation: '',
       contactName: '',
       contactEmail: '',
       contactPhone: '',
@@ -64,7 +62,6 @@ export default function CompanySheet({
     if (open && company) {
       reset({
         name: company.name,
-        deliveryLocation: company.deliveryLocation,
         contactName: company.contactName,
         contactEmail: company.contactEmail,
         contactPhone: company.contactPhone,
@@ -73,7 +70,6 @@ export default function CompanySheet({
     } else if (open) {
       reset({
         name: '',
-        deliveryLocation: '',
         contactName: '',
         contactEmail: '',
         contactPhone: '',
@@ -107,19 +103,6 @@ export default function CompanySheet({
               )}
             </div>
             <div>
-              <Label htmlFor="company-location">Delivery Location *</Label>
-              <Input
-                id="company-location"
-                {...register('deliveryLocation')}
-                className="mt-1.5"
-              />
-              {errors.deliveryLocation && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors.deliveryLocation.message}
-                </p>
-              )}
-            </div>
-            <div>
               <Label htmlFor="company-contact">Contact Person *</Label>
               <Input
                 id="company-contact"
@@ -133,7 +116,7 @@ export default function CompanySheet({
               )}
             </div>
             <div>
-              <Label htmlFor="company-email">Email *</Label>
+              <Label htmlFor="company-email">Email</Label>
               <Input
                 id="company-email"
                 type="email"
@@ -160,11 +143,11 @@ export default function CompanySheet({
               )}
             </div>
             <div>
-              <Label htmlFor="company-employees">Employee Count *</Label>
+              <Label htmlFor="company-employees">Employee Count</Label>
               <Input
                 id="company-employees"
                 type="number"
-                min={1}
+                min={0}
                 {...register('employeeCount', { valueAsNumber: true })}
                 className="mt-1.5 w-32"
               />

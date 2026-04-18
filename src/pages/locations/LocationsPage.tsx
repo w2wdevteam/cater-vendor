@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { MapPin, Plus } from 'lucide-react'
+import { MapPin, Pencil, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import PageHeader from '@/components/common/PageHeader'
 import EmptyState from '@/components/common/EmptyState'
@@ -12,9 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useLocations, useCreateLocation } from '@/hooks/useLocations'
+import { useLocations, useCreateLocation, useUpdateLocation } from '@/hooks/useLocations'
 import { useCompanies } from '@/hooks/useCompanies'
-import type { LocationFormData } from '@/types/location.types'
+import type { DeliveryLocation, LocationFormData } from '@/types/location.types'
 import LocationSheet from './LocationSheet'
 
 export default function LocationsPage() {
@@ -22,18 +22,28 @@ export default function LocationsPage() {
   const { data: locations, isLoading } = useLocations(companyFilter)
   const { data: companies } = useCompanies()
   const createMut = useCreateLocation()
+  const updateMut = useUpdateLocation()
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [editingLocation, setEditingLocation] = useState<DeliveryLocation | null>(null)
 
   const cateringManagedCompanies = useMemo(
     () => (companies ?? []).filter((c) => !c.selfManaged && c.status === 'active'),
     [companies],
   )
 
+  const selfManagedIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const c of companies ?? []) {
+      if (c.selfManaged) ids.add(c.id)
+    }
+    return ids
+  }, [companies])
+
   useEffect(() => {
     document.title = 'Locations — Catering Admin'
   }, [])
 
-  function handleSubmit(values: LocationFormData) {
+  function handleCreate(values: LocationFormData) {
     createMut.mutate(values, {
       onSuccess: () => {
         toast.success('Location created')
@@ -41,6 +51,24 @@ export default function LocationsPage() {
       },
       onError: () => toast.error('Failed to create location'),
     })
+  }
+
+  function handleUpdate(values: LocationFormData) {
+    if (!editingLocation) return
+    updateMut.mutate(
+      { id: editingLocation.id, data: values },
+      {
+        onSuccess: () => {
+          toast.success('Location updated')
+          setEditingLocation(null)
+        },
+        onError: () => toast.error('Failed to update location'),
+      },
+    )
+  }
+
+  function openEdit(loc: DeliveryLocation) {
+    setEditingLocation(loc)
   }
 
   return (
@@ -97,30 +125,56 @@ export default function LocationsPage() {
                 <th className="px-6 py-3">Address</th>
                 <th className="px-6 py-3">Contact</th>
                 <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y">
-              {locations.map((loc) => (
-                <tr key={loc.id} className="transition-colors hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 shrink-0 text-gray-400" />
-                      <div>
-                        <span className="text-sm font-medium text-gray-900">{loc.name}</span>
-                        {loc.notes && (
-                          <p className="text-xs text-gray-500">{loc.notes}</p>
-                        )}
+              {locations.map((loc) => {
+                const isSelfManaged = selfManagedIds.has(loc.companyId)
+                return (
+                  <tr key={loc.id} className="transition-colors hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 shrink-0 text-gray-400" />
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">{loc.name}</span>
+                          {loc.notes && (
+                            <p className="text-xs text-gray-500">{loc.notes}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{loc.companyName}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{loc.address}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{loc.contactPerson ?? '—'}</td>
-                  <td className="px-6 py-4">
-                    <StatusBadge status={loc.status} />
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={
+                          isSelfManaged
+                            ? 'text-sm text-gray-700'
+                            : 'text-sm font-medium text-amber-700'
+                        }
+                        title={isSelfManaged ? 'Self-managed' : 'Catering-managed'}
+                      >
+                        {loc.companyName}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{loc.address}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{loc.contactPerson ?? '—'}</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={loc.status} />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {!isSelfManaged && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEdit(loc)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -142,8 +196,18 @@ export default function LocationsPage() {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         companies={cateringManagedCompanies}
-        onSubmit={handleSubmit}
+        onSubmit={handleCreate}
         loading={createMut.isPending}
+      />
+
+      <LocationSheet
+        open={!!editingLocation}
+        onOpenChange={(v) => { if (!v) setEditingLocation(null) }}
+        companies={cateringManagedCompanies}
+        location={editingLocation}
+        fixedCompanyId={editingLocation?.companyId}
+        onSubmit={handleUpdate}
+        loading={updateMut.isPending}
       />
     </>
   )
