@@ -16,7 +16,6 @@ let menuItemsState: MenuItem[] = [
     description: 'Steamed jasmine rice with poached chicken, ginger scallion sauce.',
     price: 25000,
     imageUrl: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400',
-    dietaryTags: ['halal'],
     dailyCap: 50,
     status: 'active',
     createdAt: '2026-03-01T00:00:00Z',
@@ -28,7 +27,6 @@ let menuItemsState: MenuItem[] = [
     description: 'Slow-braised beef brisket over hand-pulled noodles in rich broth.',
     price: 30000,
     imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400',
-    dietaryTags: ['contains-dairy'],
     dailyCap: 40,
     status: 'active',
     createdAt: '2026-03-01T00:00:00Z',
@@ -40,7 +38,6 @@ let menuItemsState: MenuItem[] = [
     description: 'Whole-grain wrap with hummus, roasted vegetables, and mixed greens.',
     price: 22000,
     imageUrl: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=400',
-    dietaryTags: ['vegetarian', 'vegan'],
     dailyCap: 20,
     status: 'active',
     createdAt: '2026-03-01T00:00:00Z',
@@ -52,7 +49,6 @@ let menuItemsState: MenuItem[] = [
     description: 'Atlantic salmon with quinoa, avocado, and seasonal vegetables.',
     price: 35000,
     imageUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400',
-    dietaryTags: ['gluten-free'],
     dailyCap: 30,
     status: 'active',
     createdAt: '2026-03-05T00:00:00Z',
@@ -64,7 +60,6 @@ let menuItemsState: MenuItem[] = [
     description: 'Romaine, parmesan, croutons, anchovy-garlic dressing.',
     price: 20000,
     imageUrl: 'https://images.unsplash.com/photo-1550304943-4f24f54ddde9?w=400',
-    dietaryTags: ['vegetarian', 'contains-dairy'],
     dailyCap: 25,
     status: 'active',
     createdAt: '2026-03-10T00:00:00Z',
@@ -76,7 +71,6 @@ let menuItemsState: MenuItem[] = [
     description: 'Crispy almond-coated tofu with sesame ginger glaze.',
     price: 24000,
     imageUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
-    dietaryTags: ['vegan', 'contains-nuts'],
     status: 'inactive',
     createdAt: '2026-02-15T00:00:00Z',
     updatedAt: '2026-03-01T00:00:00Z',
@@ -151,9 +145,6 @@ export async function getMenuItems(
   }
   if (filters.status && filters.status !== 'all') {
     list = list.filter((m) => m.status === filters.status)
-  }
-  if (filters.dietaryTag && filters.dietaryTag !== 'all') {
-    list = list.filter((m) => m.dietaryTags.includes(filters.dietaryTag!))
   }
   return list.sort((a, b) => a.name.localeCompare(b.name))
 }

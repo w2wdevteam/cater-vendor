@@ -17,8 +17,6 @@ import {
   useToggleMenuItemStatus,
   useUpdateMenuItem,
 } from '@/hooks/useMenus'
-import { DIETARY_TAGS, type DietaryTag } from '@/lib/constants'
-import { cn } from '@/lib/utils'
 
 const menuItemSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -27,7 +25,6 @@ const menuItemSchema = z.object({
     .number({ message: 'Price is required' })
     .positive('Price must be greater than 0'),
   imageUrl: z.string().optional(),
-  dietaryTags: z.array(z.string()),
   dailyCap: z
     .number()
     .int()
@@ -52,8 +49,6 @@ export default function MenuEditPage() {
     register,
     handleSubmit,
     control,
-    watch,
-    setValue,
     reset,
     formState: { errors, isDirty },
   } = useForm<FormValues>({
@@ -63,7 +58,6 @@ export default function MenuEditPage() {
       description: '',
       price: undefined as unknown as number,
       imageUrl: '',
-      dietaryTags: [],
       dailyCap: undefined,
     },
   })
@@ -75,21 +69,10 @@ export default function MenuEditPage() {
         description: data.description ?? '',
         price: data.price,
         imageUrl: data.imageUrl ?? '',
-        dietaryTags: data.dietaryTags,
         dailyCap: data.dailyCap,
       })
     }
   }, [data, reset])
-
-  const selectedTags = (watch('dietaryTags') as DietaryTag[]) || []
-
-  function toggleTag(tag: DietaryTag) {
-    const current = (watch('dietaryTags') as DietaryTag[]) || []
-    const next = current.includes(tag)
-      ? current.filter((t) => t !== tag)
-      : [...current, tag]
-    setValue('dietaryTags', next, { shouldDirty: true })
-  }
 
   function onSubmit(values: FormValues) {
     if (!id) return
@@ -101,7 +84,6 @@ export default function MenuEditPage() {
           description: values.description,
           price: values.price,
           imageUrl: values.imageUrl || undefined,
-          dietaryTags: values.dietaryTags as DietaryTag[],
           dailyCap: values.dailyCap,
         },
       },
@@ -260,30 +242,6 @@ export default function MenuEditPage() {
                   )}
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div className="space-y-2 border-t pt-6">
-            <Label>Dietary Tags</Label>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {Object.entries(DIETARY_TAGS).map(([key, label]) => {
-                const selected = selectedTags.includes(key as DietaryTag)
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => toggleTag(key as DietaryTag)}
-                    className={cn(
-                      'inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                      selected
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-                    )}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
             </div>
           </div>
 

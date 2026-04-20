@@ -4,7 +4,7 @@ export const authService = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     await new Promise((resolve) => setTimeout(resolve, 500))
 
-    if (!credentials.email || !credentials.password) {
+    if (!credentials.phone || !credentials.password) {
       throw new Error('Invalid credentials')
     }
 
@@ -12,7 +12,7 @@ export const authService = {
       token: 'mock-jwt-token-' + Date.now(),
       user: {
         id: '1',
-        email: credentials.email,
+        email: 'admin@freshbites.com',
         name: 'Catering Manager',
         role: 'cater-admin',
         cateringId: 'catering-1',

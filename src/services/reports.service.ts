@@ -59,6 +59,23 @@ function dateSeed(date: string) {
   return Math.abs(h) || 1
 }
 
+function generateMenuBreakdown(rand: () => number, totalOrders: number) {
+  const ids = Object.keys(menuItems)
+  const breakdown = ids.map((id) => ({
+    menuItemId: id,
+    menuItemName: menuItems[id].name,
+    quantity: Math.max(1, Math.floor(rand() * (totalOrders / 2)) + 1),
+  }))
+  const sum = breakdown.reduce((s, b) => s + b.quantity, 0)
+  if (sum > 0) {
+    const scale = totalOrders / sum
+    for (const b of breakdown) {
+      b.quantity = Math.max(0, Math.round(b.quantity * scale))
+    }
+  }
+  return breakdown.filter((b) => b.quantity > 0)
+}
+
 export async function getDailyReport(date: string): Promise<DailyReportRow[]> {
   await delay()
   const rand = seededRandom(dateSeed(date))
@@ -66,11 +83,13 @@ export async function getDailyReport(date: string): Promise<DailyReportRow[]> {
   return activeCompanyIds.map((id) => {
     const orders = Math.floor(rand() * 20) + 3
     const nd = rand() > 0.7 ? Math.floor(rand() * 3) + 1 : 0
+    const menuBreakdown = generateMenuBreakdown(rand, orders)
     return {
       companyId: id,
       companyName: companyNames[id],
       orderCount: orders,
       notDeliveredCount: nd,
+      menuBreakdown,
     }
   })
 }
@@ -99,12 +118,14 @@ export async function getDailyByLocationReport(date: string): Promise<DailyByLoc
   return Object.entries(locationNames).map(([id, name]) => {
     const orders = Math.floor(rand() * 15) + 2
     const nd = rand() > 0.75 ? Math.floor(rand() * 2) + 1 : 0
+    const menuBreakdown = generateMenuBreakdown(rand, orders)
     return {
       locationId: id,
       locationName: name,
       companyName: locationCompanies[id],
       orderCount: orders,
       notDeliveredCount: nd,
+      menuBreakdown,
     }
   })
 }
@@ -167,11 +188,13 @@ export async function getRevenueReport(date: string): Promise<RevenueReportRow[]
   return activeCompanyIds.map((id) => {
     const orders = Math.floor(rand() * 20) + 5
     const avgPrice = 20000 + rand() * 15000
+    const menuBreakdown = generateMenuBreakdown(rand, orders)
     return {
       companyId: id,
       companyName: companyNames[id],
       orderCount: orders,
       revenue: Math.round(orders * avgPrice),
+      menuBreakdown,
     }
   })
 }

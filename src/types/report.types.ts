@@ -1,8 +1,15 @@
+export interface MenuBreakdownItem {
+  menuItemId: string
+  menuItemName: string
+  quantity: number
+}
+
 export interface DailyReportRow {
   companyId: string
   companyName: string
   orderCount: number
   notDeliveredCount: number
+  menuBreakdown: MenuBreakdownItem[]
 }
 
 export interface DailyByLocationRow {
@@ -11,6 +18,7 @@ export interface DailyByLocationRow {
   companyName: string
   orderCount: number
   notDeliveredCount: number
+  menuBreakdown: MenuBreakdownItem[]
 }
 
 export interface DailyByMenuRow {
@@ -44,6 +52,7 @@ export interface RevenueReportRow {
   companyName: string
   orderCount: number
   revenue: number
+  menuBreakdown: MenuBreakdownItem[]
 }
 
 export interface InvoiceData {

@@ -1,4 +1,4 @@
-import type { DietaryTag, MenuItemStatus } from '@/lib/constants'
+import type { MenuItemStatus } from '@/lib/constants'
 
 export interface MenuItem {
   id: string
@@ -6,7 +6,6 @@ export interface MenuItem {
   description?: string
   price: number
   imageUrl?: string
-  dietaryTags: DietaryTag[]
   dailyCap?: number
   status: MenuItemStatus
   createdAt: string
@@ -58,7 +57,6 @@ export interface MenuTemplate {
 export interface MenuItemFilters {
   search?: string
   status?: MenuItemStatus | 'all'
-  dietaryTag?: DietaryTag | 'all'
 }
 
 export interface MenuItemInput {
@@ -66,6 +64,5 @@ export interface MenuItemInput {
   description?: string
   price: number
   imageUrl?: string
-  dietaryTags: DietaryTag[]
   dailyCap?: number
 }

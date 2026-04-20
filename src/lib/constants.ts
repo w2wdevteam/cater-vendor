@@ -31,17 +31,6 @@ export const CUTOFF_STATUSES = {
 
 export type CutoffStatus = keyof typeof CUTOFF_STATUSES
 
-export const DIETARY_TAGS = {
-  vegetarian: 'Vegetarian',
-  vegan: 'Vegan',
-  halal: 'Halal',
-  'gluten-free': 'Gluten-Free',
-  'contains-nuts': 'Contains Nuts',
-  'contains-dairy': 'Contains Dairy',
-} as const
-
-export type DietaryTag = keyof typeof DIETARY_TAGS
-
 export const COMPANY_STATUSES = {
   active: 'Active',
   inactive: 'Inactive',

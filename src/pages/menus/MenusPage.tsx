@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import PageHeader from '@/components/common/PageHeader'
 import EmptyState from '@/components/common/EmptyState'
 import StatusBadge from '@/components/common/StatusBadge'
-import DietaryTags from '@/components/common/DietaryTags'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -20,11 +19,10 @@ import {
   useMenuItems,
   useToggleMenuItemStatus,
 } from '@/hooks/useMenus'
-import { DIETARY_TAGS, type DietaryTag, type MenuItemStatus } from '@/lib/constants'
+import type { MenuItemStatus } from '@/lib/constants'
 import { formatCurrency } from '@/lib/utils'
 
 type StatusFilter = MenuItemStatus | 'all'
-type TagFilter = DietaryTag | 'all'
 
 function Thumbnail({ url, alt }: { url?: string; alt: string }) {
   if (!url) {
@@ -48,7 +46,6 @@ export default function MenusPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
-  const [tag, setTag] = useState<TagFilter>('all')
 
   useEffect(() => {
     document.title = 'Menus — Catering Admin'
@@ -57,7 +54,6 @@ export default function MenusPage() {
   const { data, isLoading } = useMenuItems({
     search: search.trim() || undefined,
     status,
-    dietaryTag: tag,
   })
   const toggleStatus = useToggleMenuItemStatus()
 
@@ -107,19 +103,6 @@ export default function MenusPage() {
             <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={tag} onValueChange={(v) => setTag(v as TagFilter)}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Dietary tag" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All dietary tags</SelectItem>
-            {Object.entries(DIETARY_TAGS).map(([key, label]) => (
-              <SelectItem key={key} value={key}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {isLoading ? (
@@ -143,9 +126,6 @@ export default function MenusPage() {
               <tr className="border-b bg-gray-50">
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Item
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Dietary
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Price
@@ -181,9 +161,6 @@ export default function MenusPage() {
                         )}
                       </div>
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <DietaryTags tags={m.dietaryTags} />
                   </td>
                   <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
                     {formatCurrency(m.price)}
@@ -225,12 +202,12 @@ export default function MenusPage() {
             icon={<UtensilsCrossed className="h-12 w-12" />}
             title="No menu items found"
             description={
-              search || status !== 'all' || tag !== 'all'
+              search || status !== 'all'
                 ? 'Try adjusting your filters.'
                 : 'Create your first menu item to get started.'
             }
             action={
-              !search && status === 'all' && tag === 'all' ? (
+              !search && status === 'all' ? (
                 <Button onClick={() => navigate('/menus/create')}>
                   <Plus className="h-4 w-4" />
                   Create Menu Item

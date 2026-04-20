@@ -14,7 +14,7 @@ import { useAuthStore } from '@/store/auth.store'
 import { authService } from '@/services/auth.service'
 
 const loginSchema = z.object({
-  email: z.string().min(1, 'Email is required').email('Enter a valid email'),
+  phone: z.string().min(1, 'Phone number is required'),
   password: z.string().min(1, 'Password is required'),
 })
 
@@ -40,7 +40,7 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { phone: '', password: '' },
   })
 
   const onSubmit = async (values: LoginFormValues) => {
@@ -76,17 +76,17 @@ export default function LoginPage() {
           <CardContent className="p-6">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="phone">Phone number</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@catering.com"
-                  autoComplete="email"
-                  {...register('email')}
+                  id="phone"
+                  type="tel"
+                  placeholder="+998 90 123 45 67"
+                  autoComplete="tel"
+                  {...register('phone')}
                 />
-                {errors.email && (
+                {errors.phone && (
                   <p className="text-xs text-destructive">
-                    {errors.email.message}
+                    {errors.phone.message}
                   </p>
                 )}
               </div>
