@@ -1,24 +1,43 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type { User } from '@/types/auth.types'
+import { clearTokens, setTokens } from '@/api/client'
+import { authService } from '@/services/auth.service'
 
 interface AuthState {
   user: User | null
-  token: string | null
   isAuthenticated: boolean
-  login: (user: User, token: string) => void
+  bootstrapping: boolean
+  bootstrap: () => Promise<void>
+  login: (user: User, accessToken: string, refreshToken: string) => void
+  setUser: (user: User) => void
   logout: () => void
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      login: (user, token) => set({ user, token, isAuthenticated: true }),
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
-    }),
-    { name: 'catering-admin-auth' },
-  ),
-)
+let bootstrapPromise: Promise<void> | null = null
+
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: null,
+  isAuthenticated: false,
+  bootstrapping: true,
+  bootstrap: () => {
+    if (bootstrapPromise) return bootstrapPromise
+    bootstrapPromise = (async () => {
+      const user = await authService.restoreSession()
+      if (user) {
+        set({ user, isAuthenticated: true, bootstrapping: false })
+      } else {
+        set({ user: null, isAuthenticated: false, bootstrapping: false })
+      }
+    })()
+    return bootstrapPromise
+  },
+  login: (user, accessToken, refreshToken) => {
+    setTokens(accessToken, refreshToken)
+    set({ user, isAuthenticated: true, bootstrapping: false })
+  },
+  setUser: (user) => set({ user }),
+  logout: () => {
+    clearTokens()
+    set({ user: null, isAuthenticated: false })
+  },
+}))

@@ -19,8 +19,10 @@ import {
   useMenuItems,
   useToggleMenuItemStatus,
 } from '@/hooks/useMenus'
+import { useDebounce } from '@/hooks/useDebounce'
 import type { MenuItemStatus } from '@/lib/constants'
 import { formatCurrency } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-errors'
 
 type StatusFilter = MenuItemStatus | 'all'
 
@@ -46,13 +48,14 @@ export default function MenusPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
+  const debouncedSearch = useDebounce(search, 1000)
 
   useEffect(() => {
     document.title = 'Menus — Catering Admin'
   }, [])
 
   const { data, isLoading } = useMenuItems({
-    search: search.trim() || undefined,
+    search: debouncedSearch.trim() || undefined,
     status,
   })
   const toggleStatus = useToggleMenuItemStatus()
@@ -66,7 +69,7 @@ export default function MenusPage() {
             : 'Menu item reactivated',
         )
       },
-      onError: () => toast.error('Failed to update status'),
+      onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to update status')),
     })
   }
 

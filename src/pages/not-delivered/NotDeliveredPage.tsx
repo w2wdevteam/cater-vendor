@@ -6,7 +6,7 @@ import PageHeader from '@/components/common/PageHeader'
 import EmptyState from '@/components/common/EmptyState'
 import StatusBadge from '@/components/common/StatusBadge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   Select,
   SelectContent,
@@ -28,6 +28,7 @@ import {
   useBulkApprove,
   useBulkReject,
 } from '@/hooks/useNotDelivered'
+import { getApiErrorMessage } from '@/lib/api-errors'
 import { useCompanies } from '@/hooks/useCompanies'
 import type { NotDeliveredFilters } from '@/types/not-delivered.types'
 import { formatDateTime } from '@/lib/utils'
@@ -97,8 +98,8 @@ export default function NotDeliveredPage() {
       }
       setSelected(new Set())
       setBulkAction(null)
-    } catch {
-      toast.error(`Failed to ${bulkAction} requests`)
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, `Failed to ${bulkAction} requests`))
     }
   }
 
@@ -151,25 +152,23 @@ export default function NotDeliveredPage() {
               ))}
             </SelectContent>
           </Select>
-          <Input
-            type="date"
+          <DatePicker
             value={filters.dateFrom ?? ''}
-            onChange={(e) =>
+            onChange={(v) =>
               setFilters((f) => ({
                 ...f,
-                dateFrom: e.target.value || undefined,
+                dateFrom: v || undefined,
               }))
             }
             className="w-[160px]"
             placeholder="From date"
           />
-          <Input
-            type="date"
+          <DatePicker
             value={filters.dateTo ?? ''}
-            onChange={(e) =>
+            onChange={(v) =>
               setFilters((f) => ({
                 ...f,
-                dateTo: e.target.value || undefined,
+                dateTo: v || undefined,
               }))
             }
             className="w-[160px]"

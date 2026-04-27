@@ -24,7 +24,7 @@ export default function AuditLogPage() {
   const [filters, setFilters] = useState<AuditLogFilters>({ limit: 20 })
   const { data, isLoading } = useAuditLog(filters)
 
-  const hasActiveFilters = !!(filters.from || filters.to || filters.actionType)
+  const hasActiveFilters = !!(filters.dateFrom || filters.dateTo || filters.action)
   const totalPages = data ? Math.ceil(data.total / data.limit) : 0
   const currentPage = data?.page ?? 1
 
@@ -38,21 +38,21 @@ export default function AuditLogPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <DatePicker
-          value={filters.from}
-          onChange={(v) => setFilters((f) => ({ ...f, from: v || undefined, page: 1 }))}
+          value={filters.dateFrom}
+          onChange={(v) => setFilters((f) => ({ ...f, dateFrom: v || undefined, page: 1 }))}
           placeholder="From date"
           className="w-44"
         />
         <DatePicker
-          value={filters.to}
-          onChange={(v) => setFilters((f) => ({ ...f, to: v || undefined, page: 1 }))}
+          value={filters.dateTo}
+          onChange={(v) => setFilters((f) => ({ ...f, dateTo: v || undefined, page: 1 }))}
           placeholder="To date"
           className="w-44"
         />
         <Select
-          value={filters.actionType ?? '_all'}
+          value={filters.action ?? '_all'}
           onValueChange={(v) =>
-            setFilters((f) => ({ ...f, actionType: v === '_all' ? undefined : v, page: 1 }))
+            setFilters((f) => ({ ...f, action: v === '_all' ? undefined : v, page: 1 }))
           }
         >
           <SelectTrigger className="w-52">

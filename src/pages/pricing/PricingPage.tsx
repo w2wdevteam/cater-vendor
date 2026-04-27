@@ -28,8 +28,9 @@ import {
   useUpdateOverride,
   useDeleteOverride,
 } from '@/hooks/usePricing'
-import { getMenuItemsForPricing } from '@/services/pricing.service'
+import { useMenuItemsLookup } from '@/hooks/useLookups'
 import { formatCurrency } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-errors'
 
 function InlinePrice({
   value,
@@ -102,7 +103,7 @@ export default function PricingPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const deleteTarget = overrides?.find((o) => o.id === deleteId)
 
-  const allMenuItems = getMenuItemsForPricing()
+  const { data: allMenuItems = [] } = useMenuItemsLookup({ status: 'active' })
   const overriddenItemIds = new Set(overrides?.map((o) => o.menuItemId) ?? [])
   const availableItems = allMenuItems.filter((m) => !overriddenItemIds.has(m.id))
 
@@ -125,8 +126,8 @@ export default function PricingPage() {
       setAddOpen(false)
       setAddMenuItemId('')
       setAddPrice('')
-    } catch {
-      toast.error('Failed to add override')
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to add override'))
     }
   }
 
@@ -134,8 +135,8 @@ export default function PricingPage() {
     try {
       await updateMutation.mutateAsync({ id, overridePrice })
       toast.success('Price updated')
-    } catch {
-      toast.error('Failed to update price')
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to update price'))
     }
   }
 
@@ -145,8 +146,8 @@ export default function PricingPage() {
       await deleteMutation.mutateAsync(deleteId)
       toast.success('Override removed — default price restored')
       setDeleteId(null)
-    } catch {
-      toast.error('Failed to remove override')
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to remove override'))
     }
   }
 

@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuthStore } from '@/store/auth.store'
 import { authService } from '@/services/auth.service'
+import { getApiErrorMessage } from '@/lib/api-errors'
 
 const loginSchema = z.object({
   phone: z.string().min(1, 'Phone number is required'),
@@ -46,12 +47,12 @@ export default function LoginPage() {
   const onSubmit = async (values: LoginFormValues) => {
     setIsSubmitting(true)
     try {
-      const { user, token } = await authService.login(values)
-      login(user, token)
+      const { user, accessToken, refreshToken } = await authService.login(values)
+      login(user, accessToken, refreshToken)
       toast.success('Welcome back')
       navigate('/dashboard', { replace: true })
-    } catch {
-      toast.error('Invalid email or password')
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Invalid phone number or password'))
     } finally {
       setIsSubmitting(false)
     }

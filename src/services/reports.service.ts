@@ -1,240 +1,142 @@
+import { reportsApi } from '@/api/endpoints/reports.api'
+import { companiesApi } from '@/api/endpoints/companies.api'
 import type {
-  DailyReportRow,
   DailyByLocationRow,
   DailyByMenuRow,
+  DailyReportRow,
+  InvoiceData,
   MonthlyReport,
   RevenueReportRow,
-  InvoiceData,
 } from '@/types/report.types'
 
-const companyNames: Record<string, string> = {
-  '1': 'Acme Corporation',
-  '2': 'GlobalTech Inc.',
-  '3': 'Summit Partners',
-  '4': 'Vertex Solutions',
-  '5': 'BlueWave Digital',
-}
-
-const companyLocations: Record<string, string> = {
-  '1': '123 Main St, Floor 5, Lobby A',
-  '2': '456 Tech Blvd, Building B',
-  '3': '789 Summit Ave, Suite 300',
-  '4': '321 Innovation Dr, Floor 2',
-  '5': '555 Ocean Blvd, Floor 8',
-}
-
-const companyContacts: Record<string, { name: string; email: string }> = {
-  '1': { name: 'Sarah Johnson', email: 'sarah@acme.com' },
-  '2': { name: 'David Park', email: 'david@globaltech.com' },
-  '3': { name: 'Rachel Green', email: 'rachel@summit.com' },
-  '4': { name: 'James Wilson', email: 'james@vertex.com' },
-  '5': { name: 'Emma Davis', email: 'emma@bluewave.com' },
-}
-
-const menuItems: Record<string, { name: string; price: number }> = {
-  '1': { name: 'Chicken Rice', price: 25000 },
-  '2': { name: 'Beef Noodles', price: 30000 },
-  '3': { name: 'Veggie Wrap', price: 22000 },
-  '4': { name: 'Grilled Salmon Bowl', price: 35000 },
-  '5': { name: 'Caesar Salad', price: 20000 },
-}
-
-function delay(ms = 400) {
-  return new Promise((r) => setTimeout(r, ms))
-}
-
-function seededRandom(seed: number) {
-  let s = seed
-  return () => {
-    s = (s * 16807) % 2147483647
-    return (s - 1) / 2147483646
-  }
-}
-
-function dateSeed(date: string) {
-  let h = 0
-  for (let i = 0; i < date.length; i++) {
-    h = (h * 31 + date.charCodeAt(i)) | 0
-  }
-  return Math.abs(h) || 1
-}
-
-function generateMenuBreakdown(rand: () => number, totalOrders: number) {
-  const ids = Object.keys(menuItems)
-  const breakdown = ids.map((id) => ({
-    menuItemId: id,
-    menuItemName: menuItems[id].name,
-    quantity: Math.max(1, Math.floor(rand() * (totalOrders / 2)) + 1),
-  }))
-  const sum = breakdown.reduce((s, b) => s + b.quantity, 0)
-  if (sum > 0) {
-    const scale = totalOrders / sum
-    for (const b of breakdown) {
-      b.quantity = Math.max(0, Math.round(b.quantity * scale))
-    }
-  }
-  return breakdown.filter((b) => b.quantity > 0)
+function slug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
 export async function getDailyReport(date: string): Promise<DailyReportRow[]> {
-  await delay()
-  const rand = seededRandom(dateSeed(date))
-  const activeCompanyIds = ['1', '2', '3', '4']
-  return activeCompanyIds.map((id) => {
-    const orders = Math.floor(rand() * 20) + 3
-    const nd = rand() > 0.7 ? Math.floor(rand() * 3) + 1 : 0
-    const menuBreakdown = generateMenuBreakdown(rand, orders)
-    return {
-      companyId: id,
-      companyName: companyNames[id],
-      orderCount: orders,
-      notDeliveredCount: nd,
-      menuBreakdown,
-    }
-  })
-}
-
-const locationNames: Record<string, string> = {
-  'loc-1': 'Main Lobby - Building A',
-  'loc-2': 'Executive Floor',
-  'loc-3': 'Tech Hub Reception',
-  'loc-4': 'R&D Lab Entrance',
-  'loc-5': 'Summit Main Office',
-  'loc-6': 'Innovation Center',
-}
-
-const locationCompanies: Record<string, string> = {
-  'loc-1': 'Acme Corporation',
-  'loc-2': 'Acme Corporation',
-  'loc-3': 'GlobalTech Inc.',
-  'loc-4': 'GlobalTech Inc.',
-  'loc-5': 'Summit Partners',
-  'loc-6': 'Vertex Solutions',
+  const res = await reportsApi.dailyByCompany(date)
+  return res.companies.map((c) => ({
+    companyId: c.companyId,
+    companyName: c.companyName,
+    orderCount: c.orderCount,
+    notDeliveredCount: c.notDeliveredCount,
+    menuBreakdown: c.menuBreakdown.map((b) => ({
+      menuItemId: slug(b.menuItemName),
+      menuItemName: b.menuItemName,
+      quantity: b.quantity,
+    })),
+  }))
 }
 
 export async function getDailyByLocationReport(date: string): Promise<DailyByLocationRow[]> {
-  await delay()
-  const rand = seededRandom(dateSeed(date + 'loc'))
-  return Object.entries(locationNames).map(([id, name]) => {
-    const orders = Math.floor(rand() * 15) + 2
-    const nd = rand() > 0.75 ? Math.floor(rand() * 2) + 1 : 0
-    const menuBreakdown = generateMenuBreakdown(rand, orders)
-    return {
-      locationId: id,
-      locationName: name,
-      companyName: locationCompanies[id],
-      orderCount: orders,
-      notDeliveredCount: nd,
-      menuBreakdown,
-    }
-  })
+  const res = await reportsApi.byLocation(date, date)
+  return res.locations.map((l) => ({
+    locationId: slug(l.locationName),
+    locationName: l.locationName,
+    companyName: l.address ?? '',
+    orderCount: l.totalOrders,
+    notDeliveredCount: 0,
+    menuBreakdown: l.menuBreakdown.map((b) => ({
+      menuItemId: slug(b.menuItemName),
+      menuItemName: b.menuItemName,
+      quantity: b.quantity,
+    })),
+  }))
 }
 
 export async function getDailyByMenuReport(date: string): Promise<DailyByMenuRow[]> {
-  await delay()
-  const rand = seededRandom(dateSeed(date + 'menu'))
-  return Object.entries(menuItems).map(([id, item]) => {
-    const orders = Math.floor(rand() * 25) + 3
-    const nd = rand() > 0.8 ? Math.floor(rand() * 2) + 1 : 0
-    return {
-      menuItemId: id,
-      menuItemName: item.name,
-      orderCount: orders,
-      notDeliveredCount: nd,
-    }
-  })
+  const res = await reportsApi.byMenu(date, date)
+  return res.items.map((i) => ({
+    menuItemId: i.menuItemId,
+    menuItemName: i.menuItemName,
+    orderCount: i.totalOrders,
+    notDeliveredCount: 0,
+  }))
 }
 
 export async function getMonthlyReport(
   companyId: string,
   month: string,
 ): Promise<MonthlyReport> {
-  await delay()
-  const seed = dateSeed(companyId + month)
-  const rand = seededRandom(seed)
-
-  const rows = Object.entries(menuItems).map(([id, item]) => {
-    const qty = Math.floor(rand() * 30) + 2
-    return {
-      menuItemId: id,
-      menuItemName: item.name,
-      unitPrice: item.price,
-      quantity: qty,
-      lineTotal: item.price * qty,
-    }
-  })
-
-  const totalOrders = rows.reduce((s, r) => s + r.quantity, 0)
-  const totalAmount = rows.reduce((s, r) => s + r.lineTotal, 0)
-  const ndOrders = Math.floor(rand() * 5)
-  const ndAmount = ndOrders * 25000
-
+  const res = await reportsApi.monthlyByCompany(companyId, month)
   return {
     companyId,
-    companyName: companyNames[companyId] ?? 'Unknown',
+    companyName: res.companyName,
     month,
-    rows,
-    totalOrders,
-    totalAmount,
-    notDeliveredOrders: ndOrders,
-    notDeliveredAmount: ndAmount,
+    rows: res.menuBreakdown.map((m) => ({
+      menuItemId: slug(m.menuItemName),
+      menuItemName: m.menuItemName,
+      unitPrice: m.unitPrice,
+      quantity: m.quantity,
+      lineTotal: m.subtotal,
+    })),
+    days: res.days.map((d) => ({
+      date: d.date,
+      items: d.items.map((it) => ({
+        menuItemId: it.menuItemId,
+        menuItemName: it.menuItemName,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+      })),
+    })),
+    totalOrders: res.totalOrders,
+    totalAmount: res.totalPrice,
+    notDeliveredOrders: res.notDelivered.count,
+    notDeliveredAmount: res.notDelivered.items.reduce(
+      (sum, item) => sum + item.quantity,
+      0,
+    ),
   }
 }
 
 export async function getRevenueReport(date: string): Promise<RevenueReportRow[]> {
-  await delay()
-  const rand = seededRandom(dateSeed(date))
-  const activeCompanyIds = ['1', '2', '3', '4']
-  return activeCompanyIds.map((id) => {
-    const orders = Math.floor(rand() * 20) + 5
-    const avgPrice = 20000 + rand() * 15000
-    const menuBreakdown = generateMenuBreakdown(rand, orders)
-    return {
-      companyId: id,
-      companyName: companyNames[id],
-      orderCount: orders,
-      revenue: Math.round(orders * avgPrice),
-      menuBreakdown,
-    }
-  })
+  const res = await reportsApi.dailyRevenue(date)
+  return res.companies.map((c, idx) => ({
+    companyId: String(idx),
+    companyName: c.companyName,
+    orderCount: c.menuBreakdown.reduce((sum, b) => sum + b.quantity, 0),
+    revenue: c.revenue,
+    menuBreakdown: c.menuBreakdown.map((b) => ({
+      menuItemId: slug(b.menuItemName),
+      menuItemName: b.menuItemName,
+      quantity: b.quantity,
+    })),
+  }))
 }
 
-export async function getInvoiceData(
-  companyId: string,
-  month: string,
-): Promise<InvoiceData> {
-  await delay()
-  const seed = dateSeed(companyId + month)
-  const rand = seededRandom(seed)
+/**
+ * Invoice data isn't a single backend endpoint — we combine monthly-by-company
+ * with the company detail (for address/contact). Service charge + tax are not
+ * returned by the backend, so they default to 0; see API-QUESTIONS.md §10.
+ */
+export async function getInvoiceData(companyId: string, month: string): Promise<InvoiceData> {
+  const [monthly, company] = await Promise.all([
+    reportsApi.monthlyByCompany(companyId, month),
+    companiesApi.get(companyId),
+  ])
 
-  const lines = Object.values(menuItems).map((item) => {
-    const qty = Math.floor(rand() * 25) + 1
-    return {
-      menuItemName: item.name,
-      quantity: qty,
-      unitPrice: item.price,
-      lineTotal: item.price * qty,
-    }
-  })
+  const lines = monthly.menuBreakdown.map((m) => ({
+    menuItemName: m.menuItemName,
+    quantity: m.quantity,
+    unitPrice: m.unitPrice,
+    lineTotal: m.subtotal,
+  }))
 
-  const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0)
-  const serviceCharge = Math.round(subtotal * 0.05)
-  const tax = Math.round(subtotal * 0.08)
+  const subtotal = lines.reduce((sum, l) => sum + l.lineTotal, 0)
+  const serviceCharge = 0
+  const tax = 0
   const grandTotal = subtotal + serviceCharge + tax
 
-  const monthNum = month.split('-')[1]
-  const yearShort = month.split('-')[0].slice(-2)
-  const invoiceNumber = `INV-${companyId.padStart(3, '0')}-${yearShort}${monthNum}`
-
-  const contact = companyContacts[companyId] ?? { name: 'N/A', email: 'N/A' }
+  const [y, m] = month.split('-')
+  const invoiceNumber = `INV-${company.id.slice(0, 6).toUpperCase()}-${y.slice(-2)}${m}`
 
   return {
     invoiceNumber,
     companyId,
-    companyName: companyNames[companyId] ?? 'Unknown',
-    companyAddress: companyLocations[companyId] ?? '',
-    contactName: contact.name,
-    contactEmail: contact.email,
+    companyName: company.name,
+    companyAddress: company.address ?? '',
+    contactName: company.contactName ?? '',
+    contactEmail: company.contactEmail ?? '',
     month,
     lines,
     subtotal,
@@ -243,4 +145,3 @@ export async function getInvoiceData(
     grandTotal,
   }
 }
-

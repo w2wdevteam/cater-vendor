@@ -1,3 +1,5 @@
+import { dashboardApi } from '@/api/endpoints/dashboard.api'
+
 export interface DashboardStats {
   todayOrderCount: number
   todayRevenue: number
@@ -28,27 +30,27 @@ export interface DashboardData {
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  await new Promise((r) => setTimeout(r, 600))
-
+  const res = await dashboardApi.get()
   return {
     stats: {
-      todayOrderCount: 147,
-      todayRevenue: 3780000,
-      pendingRequestCount: 3,
-      cutoffTime: '10:00 AM',
-      isCutoffPassed: false,
+      todayOrderCount: res.todayOrderCount,
+      todayRevenue: res.todayRevenue,
+      pendingRequestCount: res.pendingRequestCount,
+      cutoffTime: res.cutoffTime ?? '—',
+      isCutoffPassed: res.cutoffStatus === 'closed',
     },
-    companyOrders: [
-      { companyId: '1', companyName: 'Acme Corporation', orderCount: 52, revenue: 1350000 },
-      { companyId: '2', companyName: 'GlobalTech Inc.', orderCount: 38, revenue: 980000 },
-      { companyId: '3', companyName: 'Summit Partners', orderCount: 31, revenue: 790000 },
-      { companyId: '4', companyName: 'Vertex Solutions', orderCount: 18, revenue: 460000 },
-      { companyId: '5', companyName: 'BlueWave Digital', orderCount: 8, revenue: 200000 },
-    ],
-    capacityAlerts: [
-      { menuItemId: '1', menuItemName: 'Chicken Rice', currentOrders: 50, dailyCap: 50, percentage: 100 },
-      { menuItemId: '2', menuItemName: 'Beef Noodles', currentOrders: 38, dailyCap: 40, percentage: 95 },
-      { menuItemId: '3', menuItemName: 'Veggie Wrap', currentOrders: 17, dailyCap: 20, percentage: 85 },
-    ],
+    companyOrders: res.ordersPerCompany.map((c) => ({
+      companyId: c.companyId,
+      companyName: c.companyName,
+      orderCount: c.orderCount,
+      revenue: 0,
+    })),
+    capacityAlerts: res.itemsNearCap.map((i) => ({
+      menuItemId: i.menuItemId,
+      menuItemName: i.menuItemName,
+      currentOrders: i.ordered,
+      dailyCap: i.cap,
+      percentage: i.cap > 0 ? Math.round((i.ordered / i.cap) * 100) : 0,
+    })),
   }
 }

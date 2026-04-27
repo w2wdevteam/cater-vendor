@@ -16,9 +16,11 @@ import {
   getMonthAssignments,
   getTemplate,
   removeAssignment,
+  removeMenuItemImage,
   toggleMenuItemStatus,
   updateMenuItem,
   updateTemplate,
+  uploadMenuItemImage,
 } from '@/services/menus.service'
 import type {
   MenuItemFilters,
@@ -68,6 +70,27 @@ export function useToggleMenuItemStatus() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => toggleMenuItemStatus(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['menu-items'] })
+    },
+  })
+}
+
+export function useUploadMenuItemImage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
+      uploadMenuItemImage(id, file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['menu-items'] })
+    },
+  })
+}
+
+export function useRemoveMenuItemImage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => removeMenuItemImage(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['menu-items'] })
     },

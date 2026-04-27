@@ -1,14 +1,20 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { ChefHat, Printer, UtensilsCrossed } from 'lucide-react'
 import PageHeader from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import { useKitchenPrep } from '@/hooks/useOrders'
 import { formatDate } from '@/lib/utils'
 
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export default function KitchenPrepPage() {
-  const today = new Date().toISOString().slice(0, 10)
-  const { data: items, isLoading } = useKitchenPrep(today)
+  const [date, setDate] = useState<string>(todayKey())
+  const { data: items, isLoading } = useKitchenPrep(date)
   const totalItems = items?.reduce((sum, i) => sum + i.totalQuantity, 0) ?? 0
+  const isToday = date === todayKey()
 
   useEffect(() => {
     document.title = 'Kitchen Prep — Catering Admin'
@@ -19,12 +25,20 @@ export default function KitchenPrepPage() {
       <div className="print:hidden">
         <PageHeader
           title="Kitchen Prep Sheet"
-          subtitle="Aggregated quantities for today's kitchen preparation."
+          subtitle="Aggregated quantities for a day's kitchen preparation."
           action={
-            <Button onClick={() => window.print()}>
-              <Printer className="h-4 w-4" />
-              Print
-            </Button>
+            <div className="flex items-center gap-2">
+              <DatePicker
+                value={date}
+                onChange={(v) => setDate(v || todayKey())}
+                placeholder="Pick a date"
+                className="w-[200px]"
+              />
+              <Button onClick={() => window.print()}>
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+            </div>
           }
         />
       </div>
@@ -32,7 +46,7 @@ export default function KitchenPrepPage() {
       <div className="hidden print:block mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Kitchen Prep Sheet</h1>
         <p className="text-sm text-gray-500">
-          {formatDate(today, 'EEEE, MMMM d, yyyy')}
+          {formatDate(date, 'EEEE, MMMM d, yyyy')}
         </p>
       </div>
 
@@ -70,7 +84,7 @@ export default function KitchenPrepPage() {
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500">Date</span>
               <span className="text-sm font-semibold text-gray-900">
-                {formatDate(today, 'EEEE, MMM d')}
+                {formatDate(date, 'EEEE, MMM d')}
               </span>
             </div>
           </div>
@@ -142,7 +156,9 @@ export default function KitchenPrepPage() {
             Nothing to prepare
           </p>
           <p className="mt-1 text-sm text-gray-500">
-            No orders have been placed for today yet.
+            {isToday
+              ? 'No orders have been placed for today yet.'
+              : `No orders for ${formatDate(date, 'MMM d, yyyy')}.`}
           </p>
         </div>
       )}

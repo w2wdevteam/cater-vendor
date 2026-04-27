@@ -51,6 +51,12 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
+
+  /* Zebra-stripe every data table. `:where()` keeps specificity at 0 so existing
+     hover/selection utilities (e.g. hover:bg-gray-50) still win on top. */
+  :where(table tbody tr:nth-child(even)) {
+    background-color: hsl(var(--muted) / 0.45);
+  }
 }
 
 @media print {

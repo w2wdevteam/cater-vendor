@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Clock, Truck, PackageCheck, ShoppingCart } from 'lucide-react'
+import { Clock, Truck, PackageCheck, ShoppingCart, MapPin } from 'lucide-react'
 import PageHeader from '@/components/common/PageHeader'
 import ConfirmDialog from '@/components/common/ConfirmDialog'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ import {
 } from '@/hooks/useDeliveryConfig'
 import { formatTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-errors'
 import type { DeliveryStatus } from '@/types/delivery-config.types'
 
 const cutoffSchema = z.object({
@@ -34,7 +35,7 @@ const statusOptions: {
   activeColor: string
 }[] = [
   {
-    value: 'ordering_open',
+    value: 'idle',
     label: 'Ordering Open',
     icon: ShoppingCart,
     color: 'text-gray-500 border-gray-200 bg-white hover:bg-gray-50',
@@ -46,6 +47,13 @@ const statusOptions: {
     icon: Truck,
     color: 'text-gray-500 border-gray-200 bg-white hover:bg-gray-50',
     activeColor: 'text-amber-700 border-amber-300 bg-amber-50 ring-2 ring-amber-200',
+  },
+  {
+    value: 'arrived',
+    label: 'Arrived',
+    icon: MapPin,
+    color: 'text-gray-500 border-gray-200 bg-white hover:bg-gray-50',
+    activeColor: 'text-indigo-700 border-indigo-300 bg-indigo-50 ring-2 ring-indigo-200',
   },
   {
     value: 'delivered',
@@ -86,8 +94,8 @@ function CutoffSection() {
         reset({ cutoffTime: pendingTime })
         setPendingTime(null)
       },
-      onError: () => {
-        toast.error('Failed to update cutoff time')
+      onError: (err) => {
+        toast.error(getApiErrorMessage(err, 'Failed to update cutoff time'))
       },
     })
   }
@@ -164,7 +172,7 @@ function DeliveryStatusSection() {
   const { data, isLoading } = useCutoffTime()
   const updateStatus = useUpdateDeliveryStatus()
 
-  const currentStatus = data?.deliveryStatus ?? 'ordering_open'
+  const currentStatus = data?.deliveryStatus ?? 'idle'
 
   function handleStatusChange(status: DeliveryStatus) {
     if (status === currentStatus) return
@@ -173,7 +181,7 @@ function DeliveryStatusSection() {
         const label = statusOptions.find((s) => s.value === status)?.label
         toast.success(`Status updated to "${label}"`)
       },
-      onError: () => toast.error('Failed to update status'),
+      onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to update status')),
     })
   }
 

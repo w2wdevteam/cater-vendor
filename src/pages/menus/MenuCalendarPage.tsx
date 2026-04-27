@@ -59,6 +59,8 @@ import {
 } from '@/hooks/useMenus'
 import { Input } from '@/components/ui/input'
 import { cn, formatCurrency } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-errors'
+import type { DayAssignment } from '@/types/menu.types'
 
 function toDateKey(date: Date): string {
   return format(date, 'yyyy-MM-dd')
@@ -106,7 +108,7 @@ function DayDetailSheet({
           setMaxOrders('')
           setAdding(false)
         },
-        onError: () => toast.error('Failed to add item'),
+        onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to add item')),
       },
     )
   }
@@ -114,7 +116,7 @@ function DayDetailSheet({
   function handleRemove(assignmentId: string) {
     remove.mutate(assignmentId, {
       onSuccess: () => toast.success('Item removed'),
-      onError: () => toast.error('Failed to remove item'),
+      onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to remove item')),
     })
   }
 
@@ -290,7 +292,7 @@ function CopyDayDialog({
           setSource('')
           setTarget('')
         },
-        onError: () => toast.error('Failed to copy day'),
+        onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to copy day')),
       },
     )
   }
@@ -365,7 +367,7 @@ function CopyWeekDialog({
           setSource('')
           setTarget('')
         },
-        onError: () => toast.error('Failed to copy week'),
+        onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to copy week')),
       },
     )
   }
@@ -434,9 +436,9 @@ export default function MenuCalendarPage() {
   const { data: monthData, isLoading } = useMonthAssignments(year, month)
 
   const byDate = useMemo(() => {
-    const map = new Map<string, typeof monthData extends Array<infer U> ? U : never>()
+    const map = new Map<string, DayAssignment>()
     for (const d of monthData ?? []) {
-      map.set(d.date, d as never)
+      map.set(d.date, d)
     }
     return map
   }, [monthData])

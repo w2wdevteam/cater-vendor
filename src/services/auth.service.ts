@@ -1,31 +1,64 @@
-import type { LoginCredentials, LoginResponse } from '@/types/auth.types'
+import { authApi, type ApiProfile } from '@/api/endpoints/auth.api'
+import { clearTokens, getRefreshToken, setTokens } from '@/api/client'
+import type { LoginCredentials, LoginResponse, User } from '@/types/auth.types'
+
+function mapProfile(admin: ApiProfile): User {
+  return {
+    id: admin.id,
+    fullName: admin.fullName,
+    phone: admin.phone,
+    email: admin.email,
+    role: 'cater-admin',
+    status: admin.status,
+    cateringId: admin.cateringId,
+    cateringName: admin.cateringName,
+    lastLogin: admin.lastLogin,
+  }
+}
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    if (!credentials.phone || !credentials.password) {
-      throw new Error('Invalid credentials')
-    }
-
+    const res = await authApi.login(credentials)
     return {
-      token: 'mock-jwt-token-' + Date.now(),
-      user: {
-        id: '1',
-        email: 'admin@freshbites.com',
-        name: 'Catering Manager',
-        role: 'cater-admin',
-        cateringId: 'catering-1',
-        cateringName: 'Fresh Bites Catering',
-      },
+      user: mapProfile(res.admin),
+      accessToken: res.accessToken,
+      refreshToken: res.refreshToken,
     }
   },
 
-  async changePassword(currentPassword: string, _newPassword: string) {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    if (currentPassword === 'wrong') {
-      throw new Error('Current password is incorrect.')
+  async profile(): Promise<User> {
+    const admin = await authApi.profile()
+    return mapProfile(admin)
+  },
+
+  /**
+   * Restore a session from the persisted refresh token:
+   * exchange it for a fresh access token, then load the profile.
+   * Returns null when no refresh token is stored or the exchange fails.
+   */
+  async restoreSession(): Promise<User | null> {
+    const refreshToken = getRefreshToken()
+    if (!refreshToken) return null
+    try {
+      const tokens = await authApi.refresh(refreshToken)
+      setTokens(tokens.accessToken, tokens.refreshToken)
+      const admin = await authApi.profile()
+      return mapProfile(admin)
+    } catch {
+      clearTokens()
+      return null
     }
-    return { success: true }
+  },
+
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword?: string,
+  ): Promise<void> {
+    await authApi.changePassword({
+      currentPassword,
+      newPassword,
+      confirmPassword: confirmPassword ?? newPassword,
+    })
   },
 }

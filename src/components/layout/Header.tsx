@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { ChevronRight, LogOut, User, ShoppingCart, Truck, PackageCheck } from 'lucide-react'
+import { ChevronRight, LogOut, User, ShoppingCart, Truck, PackageCheck, MapPin } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth.store'
@@ -16,8 +16,11 @@ const routeLabels: Record<string, string> = {
   '/menus/templates': 'Menu Templates',
   '/orders': 'Orders',
   '/orders/create': 'Place Order',
+  '/orders/clients': 'Client Orders',
+  '/orders/create-client': 'Place Client Order',
   '/orders/kitchen-prep': 'Kitchen Prep',
   '/companies': 'Companies',
+  '/clients': 'Clients',
   '/locations': 'Locations',
   '/pricing': 'Pricing',
   '/not-delivered': 'Not Delivered Requests',
@@ -26,7 +29,7 @@ const routeLabels: Record<string, string> = {
   '/reports/by-menu': 'By Menu',
   '/reports/revenue': 'Revenue',
   '/reports/monthly': 'Monthly Report',
-  '/reports/invoice': 'Invoice',
+  // '/reports/invoice': 'Invoice',
   '/settings': 'Settings',
   '/settings/audit-log': 'Audit Log',
 }
@@ -60,11 +63,12 @@ export default function Header() {
   const crumbs = getBreadcrumbs(location.pathname)
   const { data: cutoffData } = useCutoffTime()
 
-  const deliveryStatus: DeliveryStatus = cutoffData?.deliveryStatus ?? 'ordering_open'
+  const deliveryStatus: DeliveryStatus = cutoffData?.deliveryStatus ?? 'idle'
 
   const statusConfig: Record<DeliveryStatus, { label: string; icon: typeof ShoppingCart; bg: string; text: string; dot: string }> = {
-    ordering_open: { label: 'Ordering Open', icon: ShoppingCart, bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
+    idle: { label: 'Ordering Open', icon: ShoppingCart, bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' },
     on_the_way: { label: 'On the Way', icon: Truck, bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+    arrived: { label: 'Arrived', icon: MapPin, bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
     delivered: { label: 'Delivered', icon: PackageCheck, bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
   }
 
@@ -113,7 +117,7 @@ export default function Header() {
               <User className="h-4 w-4" />
             </div>
             <span className="hidden text-sm font-medium text-gray-700 sm:inline-block">
-              {user?.name ?? 'Admin'}
+              {user?.fullName ?? 'Admin'}
             </span>
           </Button>
 
@@ -126,9 +130,9 @@ export default function Header() {
               <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border bg-white py-1 shadow-lg">
                 <div className="border-b px-3 py-2">
                   <p className="text-sm font-medium text-gray-900">
-                    {user?.name}
+                    {user?.fullName}
                   </p>
-                  <p className="text-xs text-gray-500">{user?.email}</p>
+                  <p className="text-xs text-gray-500">{user?.email ?? user?.phone}</p>
                 </div>
                 <button
                   onClick={() => {

@@ -15,7 +15,7 @@ const tabs = [
   { label: 'By Menu', path: '/reports/by-menu', icon: UtensilsCrossed },
   { label: 'Revenue', path: '/reports/revenue', icon: TrendingUp },
   { label: 'Monthly', path: '/reports/monthly', icon: CalendarCheck },
-  { label: 'Invoice', path: '/reports/invoice', icon: FileText },
+  // { label: 'Invoice', path: '/reports/invoice', icon: FileText },
 ]
 
 export default function ReportsLayout() {

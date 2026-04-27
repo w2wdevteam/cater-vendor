@@ -1,24 +1,61 @@
-import type { CutoffConfig, DeliveryStatus } from '@/types/delivery-config.types'
+import { deliveryApi } from '@/api/endpoints/delivery.api'
+import type {
+  CutoffConfig,
+  DeliveryConfig,
+  DeliveryStatus,
+} from '@/types/delivery-config.types'
 
-let cutoffState: CutoffConfig = {
-  cutoffTime: '10:00',
-  deliveryStatus: 'ordering_open',
-  updatedAt: new Date().toISOString(),
+export async function getDeliveryConfig(): Promise<DeliveryConfig> {
+  const config = await deliveryApi.getConfig()
+  return {
+    cutoffTime: config.cutoffTime ?? '',
+    companyDeliveryWindows: config.companyDeliveryWindows,
+  }
 }
 
 export async function getCutoffTime(): Promise<CutoffConfig> {
-  await new Promise((r) => setTimeout(r, 400))
-  return { ...cutoffState }
+  const [config, status] = await Promise.all([
+    deliveryApi.getConfig(),
+    deliveryApi.getStatus(),
+  ])
+  return {
+    cutoffTime: config.cutoffTime ?? '',
+    deliveryStatus: status.status,
+    updatedAt: status.deliveredAt ?? status.arrivedAt ?? status.startedAt ?? new Date().toISOString(),
+  }
 }
 
 export async function updateCutoffTime(time: string): Promise<CutoffConfig> {
-  await new Promise((r) => setTimeout(r, 500))
-  cutoffState = { ...cutoffState, cutoffTime: time, updatedAt: new Date().toISOString() }
-  return { ...cutoffState }
+  const [config, status] = await Promise.all([
+    deliveryApi.updateCutoff(time),
+    deliveryApi.getStatus(),
+  ])
+  return {
+    cutoffTime: config.cutoffTime ?? '',
+    deliveryStatus: status.status,
+    updatedAt: new Date().toISOString(),
+  }
 }
 
 export async function updateDeliveryStatus(status: DeliveryStatus): Promise<CutoffConfig> {
-  await new Promise((r) => setTimeout(r, 400))
-  cutoffState = { ...cutoffState, deliveryStatus: status, updatedAt: new Date().toISOString() }
-  return { ...cutoffState }
+  const [statusLog, config] = await Promise.all([
+    deliveryApi.updateStatus(status),
+    deliveryApi.getConfig(),
+  ])
+  return {
+    cutoffTime: config.cutoffTime ?? '',
+    deliveryStatus: statusLog.status,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export async function updateCompanyDeliveryWindow(
+  companyId: string,
+  start: string | null,
+  end: string | null,
+): Promise<void> {
+  await deliveryApi.updateCompanyWindow(companyId, {
+    deliveryWindowStart: start,
+    deliveryWindowEnd: end,
+  })
 }

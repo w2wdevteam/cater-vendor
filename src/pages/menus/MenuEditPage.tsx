@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -14,9 +14,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import {
   useMenuItem,
+  useRemoveMenuItemImage,
   useToggleMenuItemStatus,
   useUpdateMenuItem,
+  useUploadMenuItemImage,
 } from '@/hooks/useMenus'
+import { getApiErrorMessage } from '@/lib/api-errors'
 
 const menuItemSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -24,7 +27,6 @@ const menuItemSchema = z.object({
   price: z
     .number({ message: 'Price is required' })
     .positive('Price must be greater than 0'),
-  imageUrl: z.string().optional(),
   dailyCap: z
     .number()
     .int()
@@ -39,7 +41,12 @@ export default function MenuEditPage() {
   const navigate = useNavigate()
   const { data, isLoading } = useMenuItem(id)
   const update = useUpdateMenuItem()
+  const uploadImage = useUploadMenuItemImage()
+  const removeImage = useRemoveMenuItemImage()
   const toggleStatus = useToggleMenuItemStatus()
+
+  const [pendingImage, setPendingImage] = useState<File | null>(null)
+  const [clearExistingImage, setClearExistingImage] = useState(false)
 
   useEffect(() => {
     document.title = 'Edit Menu Item — Catering Admin'
@@ -48,7 +55,6 @@ export default function MenuEditPage() {
   const {
     register,
     handleSubmit,
-    control,
     reset,
     formState: { errors, isDirty },
   } = useForm<FormValues>({
@@ -57,7 +63,6 @@ export default function MenuEditPage() {
       name: '',
       description: '',
       price: undefined as unknown as number,
-      imageUrl: '',
       dailyCap: undefined,
     },
   })
@@ -68,33 +73,40 @@ export default function MenuEditPage() {
         name: data.name,
         description: data.description ?? '',
         price: data.price,
-        imageUrl: data.imageUrl ?? '',
         dailyCap: data.dailyCap,
       })
+      setPendingImage(null)
+      setClearExistingImage(false)
     }
   }, [data, reset])
 
-  function onSubmit(values: FormValues) {
+  const hasImageChange =
+    pendingImage !== null || (clearExistingImage && !!data?.imageUrl)
+
+  async function onSubmit(values: FormValues) {
     if (!id) return
-    update.mutate(
-      {
-        id,
-        input: {
-          name: values.name,
-          description: values.description,
-          price: values.price,
-          imageUrl: values.imageUrl || undefined,
-          dailyCap: values.dailyCap,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success('Menu item updated')
-          navigate('/menus')
-        },
-        onError: () => toast.error('Failed to update menu item'),
-      },
-    )
+    try {
+      if (isDirty) {
+        await update.mutateAsync({
+          id,
+          input: {
+            name: values.name,
+            description: values.description,
+            price: values.price,
+            dailyCap: values.dailyCap,
+          },
+        })
+      }
+      if (pendingImage) {
+        await uploadImage.mutateAsync({ id, file: pendingImage })
+      } else if (clearExistingImage && data?.imageUrl) {
+        await removeImage.mutateAsync(id)
+      }
+      toast.success('Menu item updated')
+      navigate('/menus')
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to update menu item'))
+    }
   }
 
   function handleToggleStatus() {
@@ -107,7 +119,7 @@ export default function MenuEditPage() {
             : 'Menu item reactivated',
         )
       },
-      onError: () => toast.error('Failed to update status'),
+      onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to update status')),
     })
   }
 
@@ -126,6 +138,10 @@ export default function MenuEditPage() {
       </>
     )
   }
+
+  const isBusy =
+    update.isPending || uploadImage.isPending || removeImage.isPending
+  const previewUrl = clearExistingImage ? null : data.imageUrl ?? null
 
   return (
     <>
@@ -177,15 +193,16 @@ export default function MenuEditPage() {
           <div className="grid gap-6 md:grid-cols-[auto,1fr]">
             <div className="space-y-2">
               <Label>Image</Label>
-              <Controller
-                control={control}
-                name="imageUrl"
-                render={({ field }) => (
-                  <ImageUpload
-                    value={field.value}
-                    onChange={(v) => field.onChange(v ?? '')}
-                  />
-                )}
+              <ImageUpload
+                previewUrl={previewUrl}
+                onFileSelect={(file) => {
+                  setPendingImage(file)
+                  setClearExistingImage(false)
+                }}
+                onClear={() => {
+                  setPendingImage(null)
+                  setClearExistingImage(true)
+                }}
               />
             </div>
 
@@ -250,12 +267,15 @@ export default function MenuEditPage() {
               type="button"
               variant="ghost"
               onClick={() => navigate('/menus')}
-              disabled={update.isPending}
+              disabled={isBusy}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!isDirty || update.isPending}>
-              {update.isPending ? 'Saving…' : 'Save changes'}
+            <Button
+              type="submit"
+              disabled={(!isDirty && !hasImageChange) || isBusy}
+            >
+              {isBusy ? 'Saving…' : 'Save changes'}
             </Button>
           </div>
         </form>

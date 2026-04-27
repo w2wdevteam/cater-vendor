@@ -7,9 +7,13 @@ export interface AuditLogEntry {
 }
 
 export interface AuditLogFilters {
-  from?: string
-  to?: string
-  actionType?: string
+  dateFrom?: string
+  dateTo?: string
+  action?: string
+  entityType?: string
+  entityId?: string
+  performedById?: string
+  search?: string
   page?: number
   limit?: number
 }

@@ -10,6 +10,7 @@ export interface Order {
   menuItemId: string
   menuItemName: string
   menuItemPrice: number
+  quantity: number
   menuItemImageUrl?: string
   status: OrderStatus
   rejectionReason?: string
@@ -31,6 +32,8 @@ export interface CreateOrderInput {
   menuItemId: string
   quantity: number
   locationId: string
+  /** Optional order date in `yyyy-MM-dd`. Backend defaults to today when omitted. */
+  date?: string
 }
 
 export interface KitchenPrepItem {

@@ -10,7 +10,9 @@ import {
   Building2,
   DollarSign,
   PackageX,
+  CreditCard,
   Shield,
+  UserPlus,
   CalendarDays,
   CalendarCheck,
   TrendingUp,
@@ -18,6 +20,7 @@ import {
   MapPin,
   Settings,
   ClipboardList,
+  UserRound,
   PanelLeftClose,
   PanelLeft,
 } from 'lucide-react'
@@ -25,6 +28,7 @@ import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUiStore } from '@/store/ui.store'
 import { useAuthStore } from '@/store/auth.store'
+import { useMyCatering } from '@/hooks/useMyCatering'
 import { Button } from '@/components/ui/button'
 
 interface NavItem {
@@ -48,16 +52,8 @@ const navigation: (NavItem | NavGroup)[] = [
       { label: 'Menu Calendar', path: '/menus/calendar', icon: CalendarRange },
       { label: 'Menu Templates', path: '/menus/templates', icon: LayoutTemplate },
       { label: 'Orders', path: '/orders', icon: ShoppingCart },
+      { label: 'Client Orders', path: '/orders/clients', icon: UserPlus },
       { label: 'Kitchen Prep', path: '/orders/kitchen-prep', icon: ChefHat },
-    ],
-  },
-  {
-    title: 'Clients',
-    items: [
-      { label: 'Companies', path: '/companies', icon: Building2 },
-      { label: 'Locations', path: '/locations', icon: MapPin },
-      { label: 'Pricing', path: '/pricing', icon: DollarSign },
-      { label: 'Not Delivered', path: '/not-delivered', icon: PackageX },
     ],
   },
   {
@@ -68,7 +64,18 @@ const navigation: (NavItem | NavGroup)[] = [
       { label: 'By Menu', path: '/reports/by-menu', icon: UtensilsCrossed },
       { label: 'Revenue', path: '/reports/revenue', icon: TrendingUp },
       { label: 'Monthly', path: '/reports/monthly', icon: CalendarCheck },
-      { label: 'Invoice', path: '/reports/invoice', icon: FileText },
+      // { label: 'Invoice', path: '/reports/invoice', icon: FileText },
+    ],
+  },
+  {
+    title: 'Clients',
+    items: [
+      { label: 'Companies', path: '/companies', icon: Building2 },
+      { label: 'Clients', path: '/clients', icon: UserRound },
+      { label: 'Locations', path: '/locations', icon: MapPin },
+      // { label: 'Pricing', path: '/pricing', icon: DollarSign },
+      { label: 'Payments', path: '/payments', icon: CreditCard },
+      { label: 'Not Delivered', path: '/not-delivered', icon: PackageX },
     ],
   },
   {
@@ -89,15 +96,20 @@ export default function Sidebar() {
   const location = useLocation()
   const collapsed = useUiStore((s) => s.sidebarCollapsed)
   const toggle = useUiStore((s) => s.toggleSidebar)
-  const cateringName = useAuthStore((s) => s.user?.cateringName ?? 'Catering')
+  const profileCateringName = useAuthStore((s) => s.user?.cateringName ?? 'Catering')
+  const { data: catering } = useMyCatering()
+  const cateringName = catering?.name ?? profileCateringName
+  const logoUrl = catering?.logoUrl ?? null
 
   function isActive(path: string) {
     if (path === '/dashboard') return location.pathname === '/dashboard'
     if (path === '/orders/kitchen-prep') return location.pathname === '/orders/kitchen-prep'
+    if (path === '/orders/clients') return location.pathname === '/orders/clients' || location.pathname === '/orders/create-client'
     if (path === '/orders') return location.pathname === '/orders' || location.pathname === '/orders/create'
     if (path === '/menus/calendar') return location.pathname === '/menus/calendar'
     if (path === '/menus/templates') return location.pathname === '/menus/templates'
     if (path === '/menus') return location.pathname === '/menus' || location.pathname === '/menus/create' || location.pathname.startsWith('/menus/') && location.pathname.endsWith('/edit')
+    if (path === '/settings') return location.pathname === '/settings'
     return location.pathname.startsWith(path)
   }
 
@@ -114,9 +126,17 @@ export default function Sidebar() {
           collapsed ? 'justify-center' : 'gap-3',
         )}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <ChefHat className="h-4 w-4" />
-        </div>
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt={cateringName}
+            className="h-8 w-8 shrink-0 rounded-lg object-cover"
+          />
+        ) : (
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <ChefHat className="h-4 w-4" />
+          </div>
+        )}
         {!collapsed && (
           <span className="truncate text-sm font-semibold text-gray-900">
             {cateringName}

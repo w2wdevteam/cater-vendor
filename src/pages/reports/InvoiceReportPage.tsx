@@ -70,7 +70,11 @@ export default function InvoiceReportPage() {
               <Printer className="h-4 w-4" />
               Print
             </Button>
-            <ExportButtons formats={['pdf']} filename={`invoice-${companyId}-${month}`} />
+            <ExportButtons
+              filename={`invoice-${companyId}-${month}`}
+              endpoint="/cater-admin/reports/monthly-by-company"
+              params={{ companyId, month }}
+            />
           </div>
         )}
       </div>

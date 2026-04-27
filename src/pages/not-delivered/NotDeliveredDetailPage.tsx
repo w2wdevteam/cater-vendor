@@ -28,6 +28,7 @@ import {
   useRejectRequest,
 } from '@/hooks/useNotDelivered'
 import { formatDateTime, formatDate } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-errors'
 
 export default function NotDeliveredDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -62,8 +63,8 @@ export default function NotDeliveredDetailPage() {
         toast.success('Request rejected — company notified')
       }
       setDialogAction(null)
-    } catch {
-      toast.error(`Failed to ${dialogAction} request`)
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, `Failed to ${dialogAction} request`))
     }
   }
 

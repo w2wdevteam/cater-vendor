@@ -8,12 +8,14 @@ export interface Company {
   contactEmail: string
   contactPhone: string
   employeeCount: number
+  departmentCount: number
   selfManaged: boolean
   status: CompanyStatus
   deliveryWindowStart: string
   deliveryWindowEnd: string
   adminName?: string
   adminEmail?: string
+  balance: number
   createdAt: string
 }
 
@@ -29,10 +31,13 @@ export interface Department {
 
 export interface CompanyFormData {
   name: string
-  contactName: string
-  contactEmail?: string
   contactPhone: string
-  employeeCount?: number
+  address?: string
+  contactName?: string
+  contactEmail?: string
+  notes?: string
+  deliveryWindowStart?: string
+  deliveryWindowEnd?: string
 }
 
 export interface CompanyFilters {

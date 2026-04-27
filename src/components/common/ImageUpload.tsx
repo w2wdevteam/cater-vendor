@@ -1,30 +1,46 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { ImagePlus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ImageUploadProps {
-  value?: string
-  onChange: (value: string | undefined) => void
+  /**
+   * URL to show when no new file has been selected — typically a remote URL
+   * loaded from the server. Pass `null`/`undefined` for empty.
+   */
+  previewUrl?: string | null
+  onFileSelect: (file: File) => void
+  onClear: () => void
   className?: string
 }
 
 export default function ImageUpload({
-  value,
-  onChange,
+  previewUrl,
+  onFileSelect,
+  onClear,
   className,
 }: ImageUploadProps) {
+  const [localPreview, setLocalPreview] = useState<string | null>(null)
+  const objectUrlRef = useRef<string | null>(null)
+
+  useEffect(
+    () => () => {
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
+    },
+    [],
+  )
+
   const onDrop = useCallback(
     (accepted: File[]) => {
       const file = accepted[0]
       if (!file) return
-      const reader = new FileReader()
-      reader.onload = () => {
-        if (typeof reader.result === 'string') onChange(reader.result)
-      }
-      reader.readAsDataURL(file)
+      if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
+      const url = URL.createObjectURL(file)
+      objectUrlRef.current = url
+      setLocalPreview(url)
+      onFileSelect(file)
     },
-    [onChange],
+    [onFileSelect],
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -34,17 +50,28 @@ export default function ImageUpload({
     multiple: false,
   })
 
-  if (value) {
+  function handleClear() {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current)
+      objectUrlRef.current = null
+    }
+    setLocalPreview(null)
+    onClear()
+  }
+
+  const shown = localPreview ?? previewUrl ?? null
+
+  if (shown) {
     return (
       <div className={cn('relative inline-block', className)}>
         <img
-          src={value}
+          src={shown}
           alt="Preview"
           className="h-40 w-40 rounded-lg border object-cover"
         />
         <button
           type="button"
-          onClick={() => onChange(undefined)}
+          onClick={handleClear}
           className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-gray-600 shadow-md ring-1 ring-gray-200 hover:bg-gray-50"
           aria-label="Remove image"
         >

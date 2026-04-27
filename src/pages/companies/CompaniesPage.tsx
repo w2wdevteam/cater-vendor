@@ -19,6 +19,9 @@ import {
   useCreateCompany,
   useUpdateCompany,
 } from '@/hooks/useCompanies'
+import { useDebounce } from '@/hooks/useDebounce'
+import { formatCurrency } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-errors'
 import type { Company, CompanyFilters, CompanyFormData } from '@/types/company.types'
 import CompanySheet from './CompanySheet'
 
@@ -27,7 +30,8 @@ export default function CompaniesPage() {
     search: '',
     status: 'all',
   })
-  const { data: companies, isLoading } = useCompanies(filters)
+  const debouncedSearch = useDebounce(filters.search, 1000)
+  const { data: companies, isLoading } = useCompanies({ ...filters, search: debouncedSearch })
   const createMut = useCreateCompany()
   const updateMut = useUpdateCompany()
 
@@ -57,7 +61,7 @@ export default function CompaniesPage() {
             toast.success('Company updated')
             setSheetOpen(false)
           },
-          onError: () => toast.error('Failed to update company'),
+          onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to update company')),
         },
       )
     } else {
@@ -66,7 +70,7 @@ export default function CompaniesPage() {
           toast.success('Company created')
           setSheetOpen(false)
         },
-        onError: () => toast.error('Failed to create company'),
+        onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to create company')),
       })
     }
   }
@@ -133,6 +137,7 @@ export default function CompaniesPage() {
                   <th className="px-6 py-3">Contact</th>
                   <th className="px-6 py-3 text-center">Employees</th>
                   <th className="px-6 py-3">Order Management</th>
+                  <th className="px-6 py-3 text-right">Balance</th>
                   <th className="px-6 py-3">Status</th>
                   <th className="px-6 py-3" />
                 </tr>
@@ -183,6 +188,17 @@ export default function CompaniesPage() {
                       >
                         {company.selfManaged ? 'Self-managed' : 'Catering-managed'}
                       </span>
+                    </td>
+                    <td
+                      className={`px-6 py-4 text-right text-sm font-medium tabular-nums ${
+                        company.balance < 0
+                          ? 'text-red-600'
+                          : company.balance > 0
+                            ? 'text-emerald-600'
+                            : 'text-gray-500'
+                      }`}
+                    >
+                      {formatCurrency(company.balance)}
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={company.status} />

@@ -28,6 +28,7 @@ import {
   useUpdateTemplate,
 } from '@/hooks/useMenus'
 import { cn, formatCurrency } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-errors'
 import type { TemplateItem, WeekDay } from '@/types/menu.types'
 
 const DAY_LABELS: Record<WeekDay, string> = {
@@ -213,7 +214,7 @@ function ApplyTemplateDialog({
         onOpenChange(false)
         setStartDate('')
       },
-      onError: () => toast.error('Failed to apply template'),
+      onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to apply template')),
     })
   }
 
@@ -294,6 +295,13 @@ export default function MenuTemplatesPage() {
     return JSON.stringify(template.days) !== JSON.stringify(draft)
   }, [template, draft])
 
+  const draftHasItems = useMemo(
+    () => (draft ? DAY_ORDER.some((d) => draft[d].length > 0) : false),
+    [draft],
+  )
+  const templateExists = !!template?.id
+  const canSave = isDirty && (templateExists || draftHasItems)
+
   function handleAdd(day: WeekDay, id: string, maxOrders: number) {
     setDraft((d) => {
       if (!d) return d
@@ -329,7 +337,7 @@ export default function MenuTemplatesPage() {
     if (!draft) return
     updateTemplate.mutate(draft, {
       onSuccess: () => toast.success('Template saved'),
-      onError: () => toast.error('Failed to save template'),
+      onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to save template')),
     })
   }
 
@@ -363,7 +371,12 @@ export default function MenuTemplatesPage() {
         subtitle="Set a recurring 7-day rotation you can apply to the calendar."
         action={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setApplyOpen(true)}>
+            <Button
+              variant="outline"
+              onClick={() => setApplyOpen(true)}
+              disabled={!templateExists}
+              title={!templateExists ? 'Save a template first' : undefined}
+            >
               <CalendarCheck className="h-4 w-4" />
               Apply template
             </Button>
@@ -376,7 +389,7 @@ export default function MenuTemplatesPage() {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!isDirty || updateTemplate.isPending}
+              disabled={!canSave || updateTemplate.isPending}
             >
               <Save className="h-4 w-4" />
               {updateTemplate.isPending ? 'Saving…' : 'Save template'}

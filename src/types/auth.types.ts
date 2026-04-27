@@ -1,10 +1,16 @@
+export type UserRole = 'cater-admin'
+export type UserStatus = 'active' | 'inactive'
+
 export interface User {
   id: string
-  email: string
-  name: string
-  role: 'cater-admin'
+  fullName: string
+  phone: string
+  email: string | null
+  role: UserRole
+  status: UserStatus
   cateringId: string
   cateringName: string
+  lastLogin: string | null
 }
 
 export interface LoginCredentials {
@@ -14,5 +20,12 @@ export interface LoginCredentials {
 
 export interface LoginResponse {
   user: User
-  token: string
+  accessToken: string
+  refreshToken: string
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
 }

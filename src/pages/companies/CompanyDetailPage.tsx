@@ -18,6 +18,7 @@ import StatusBadge from '@/components/common/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { useCompany, useCompanyDepartments } from '@/hooks/useCompanies'
 import { useLocations, useCreateLocation, useUpdateLocation } from '@/hooks/useLocations'
+import { getApiErrorMessage } from '@/lib/api-errors'
 import type { DeliveryLocation, LocationFormData } from '@/types/location.types'
 import LocationSheet from '@/pages/locations/LocationSheet'
 
@@ -39,7 +40,7 @@ export default function CompanyDetailPage() {
         toast.success('Location created')
         setLocSheetOpen(false)
       },
-      onError: () => toast.error('Failed to create location'),
+      onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to create location')),
     })
   }
 
@@ -52,7 +53,7 @@ export default function CompanyDetailPage() {
           toast.success('Location updated')
           setEditingLocation(null)
         },
-        onError: () => toast.error('Failed to update location'),
+        onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to update location')),
       },
     )
   }

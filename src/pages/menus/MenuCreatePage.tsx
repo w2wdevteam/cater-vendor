@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { useCreateMenuItem } from '@/hooks/useMenus'
+import { useCreateMenuItem, useUploadMenuItemImage } from '@/hooks/useMenus'
+import { getApiErrorMessage } from '@/lib/api-errors'
 
 const menuItemSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -19,7 +20,6 @@ const menuItemSchema = z.object({
   price: z
     .number({ message: 'Price is required' })
     .positive('Price must be greater than 0'),
-  imageUrl: z.string().optional(),
   dailyCap: z
     .number()
     .int()
@@ -32,6 +32,8 @@ type FormValues = z.infer<typeof menuItemSchema>
 export default function MenuCreatePage() {
   const navigate = useNavigate()
   const create = useCreateMenuItem()
+  const uploadImage = useUploadMenuItemImage()
+  const [pendingImage, setPendingImage] = useState<File | null>(null)
 
   useEffect(() => {
     document.title = 'Create Menu Item — Catering Admin'
@@ -40,7 +42,6 @@ export default function MenuCreatePage() {
   const {
     register,
     handleSubmit,
-    control,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(menuItemSchema),
@@ -48,29 +49,29 @@ export default function MenuCreatePage() {
       name: '',
       description: '',
       price: undefined as unknown as number,
-      imageUrl: '',
       dailyCap: undefined,
     },
   })
 
-  function onSubmit(values: FormValues) {
-    create.mutate(
-      {
+  async function onSubmit(values: FormValues) {
+    try {
+      const created = await create.mutateAsync({
         name: values.name,
         description: values.description,
         price: values.price,
-        imageUrl: values.imageUrl || undefined,
         dailyCap: values.dailyCap,
-      },
-      {
-        onSuccess: () => {
-          toast.success('Menu item created')
-          navigate('/menus')
-        },
-        onError: () => toast.error('Failed to create menu item'),
-      },
-    )
+      })
+      if (pendingImage) {
+        await uploadImage.mutateAsync({ id: created.id, file: pendingImage })
+      }
+      toast.success('Menu item created')
+      navigate('/menus')
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to create menu item'))
+    }
   }
+
+  const isBusy = create.isPending || uploadImage.isPending
 
   return (
     <>
@@ -92,15 +93,9 @@ export default function MenuCreatePage() {
         <div className="grid gap-6 md:grid-cols-[auto,1fr]">
           <div className="space-y-2">
             <Label>Image</Label>
-            <Controller
-              control={control}
-              name="imageUrl"
-              render={({ field }) => (
-                <ImageUpload
-                  value={field.value}
-                  onChange={(v) => field.onChange(v ?? '')}
-                />
-              )}
+            <ImageUpload
+              onFileSelect={(file) => setPendingImage(file)}
+              onClear={() => setPendingImage(null)}
             />
           </div>
 
@@ -169,12 +164,12 @@ export default function MenuCreatePage() {
             type="button"
             variant="ghost"
             onClick={() => navigate('/menus')}
-            disabled={create.isPending}
+            disabled={isBusy}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={create.isPending}>
-            {create.isPending ? 'Creating…' : 'Create menu item'}
+          <Button type="submit" disabled={isBusy}>
+            {isBusy ? 'Creating…' : 'Create menu item'}
           </Button>
         </div>
       </form>

@@ -1,18 +1,16 @@
-export type AdminRole = 'super_admin' | 'admin'
-
 export interface Admin {
   id: string
-  name: string
-  email: string
-  role: AdminRole
+  fullName: string
+  phone: string
+  email: string | null
   status: 'active' | 'inactive'
+  lastLogin: string | null
   createdAt: string
-  lastLoginAt: string | null
 }
 
 export interface AdminFormData {
-  name: string
-  email: string
-  role: AdminRole
+  fullName: string
+  phone: string
+  email?: string
   password?: string
 }

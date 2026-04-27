@@ -17,10 +17,20 @@ import type { Company, CompanyFormData } from '@/types/company.types'
 
 const schema = z.object({
   name: z.string().min(1, 'Company name is required'),
-  contactName: z.string().min(1, 'Contact name is required'),
-  contactEmail: z.string().email('Invalid email').optional().or(z.literal('')),
   contactPhone: z.string().min(1, 'Phone is required'),
-  employeeCount: z.number().optional(),
+  contactName: z.string().optional(),
+  contactEmail: z.string().email('Invalid email').optional().or(z.literal('')),
+  address: z.string().optional(),
+  deliveryWindowStart: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM')
+    .optional()
+    .or(z.literal('')),
+  deliveryWindowEnd: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM')
+    .optional()
+    .or(z.literal('')),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -54,7 +64,9 @@ export default function CompanySheet({
       contactName: '',
       contactEmail: '',
       contactPhone: '',
-      employeeCount: 0,
+      address: '',
+      deliveryWindowStart: '',
+      deliveryWindowEnd: '',
     },
   })
 
@@ -65,7 +77,9 @@ export default function CompanySheet({
         contactName: company.contactName,
         contactEmail: company.contactEmail,
         contactPhone: company.contactPhone,
-        employeeCount: company.employeeCount,
+        address: company.deliveryLocation,
+        deliveryWindowStart: company.deliveryWindowStart,
+        deliveryWindowEnd: company.deliveryWindowEnd,
       })
     } else if (open) {
       reset({
@@ -73,7 +87,9 @@ export default function CompanySheet({
         contactName: '',
         contactEmail: '',
         contactPhone: '',
-        employeeCount: 0,
+        address: '',
+        deliveryWindowStart: '',
+        deliveryWindowEnd: '',
       })
     }
   }, [open, company, reset])
@@ -84,9 +100,7 @@ export default function CompanySheet({
         <SheetHeader>
           <SheetTitle>{isEdit ? 'Edit Company' : 'Add Company'}</SheetTitle>
           <SheetDescription>
-            {isEdit
-              ? 'Update company details.'
-              : 'Add a new catering-managed company.'}
+            {isEdit ? 'Update company details.' : 'Add a new catering-managed company.'}
           </SheetDescription>
         </SheetHeader>
 
@@ -103,16 +117,27 @@ export default function CompanySheet({
               )}
             </div>
             <div>
-              <Label htmlFor="company-contact">Contact Person *</Label>
+              <Label htmlFor="company-phone">Phone *</Label>
+              <Input
+                id="company-phone"
+                type="tel"
+                placeholder="+998901234567"
+                {...register('contactPhone')}
+                className="mt-1.5"
+              />
+              {errors.contactPhone && (
+                <p className="mt-1 text-xs text-red-500">{errors.contactPhone.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="company-contact">Contact Person</Label>
               <Input
                 id="company-contact"
                 {...register('contactName')}
                 className="mt-1.5"
               />
               {errors.contactName && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors.contactName.message}
-                </p>
+                <p className="mt-1 text-xs text-red-500">{errors.contactName.message}</p>
               )}
             </div>
             <div>
@@ -124,47 +149,48 @@ export default function CompanySheet({
                 className="mt-1.5"
               />
               {errors.contactEmail && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors.contactEmail.message}
-                </p>
+                <p className="mt-1 text-xs text-red-500">{errors.contactEmail.message}</p>
               )}
             </div>
             <div>
-              <Label htmlFor="company-phone">Phone *</Label>
-              <Input
-                id="company-phone"
-                {...register('contactPhone')}
-                className="mt-1.5"
-              />
-              {errors.contactPhone && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors.contactPhone.message}
-                </p>
-              )}
+              <Label htmlFor="company-address">Address</Label>
+              <Input id="company-address" {...register('address')} className="mt-1.5" />
             </div>
-            <div>
-              <Label htmlFor="company-employees">Employee Count</Label>
-              <Input
-                id="company-employees"
-                type="number"
-                min={0}
-                {...register('employeeCount', { valueAsNumber: true })}
-                className="mt-1.5 w-32"
-              />
-              {errors.employeeCount && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors.employeeCount.message}
-                </p>
-              )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="company-window-start">Delivery Window Start</Label>
+                <Input
+                  id="company-window-start"
+                  type="time"
+                  {...register('deliveryWindowStart')}
+                  className="mt-1.5"
+                />
+                {errors.deliveryWindowStart && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {errors.deliveryWindowStart.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="company-window-end">Delivery Window End</Label>
+                <Input
+                  id="company-window-end"
+                  type="time"
+                  {...register('deliveryWindowEnd')}
+                  className="mt-1.5"
+                />
+                {errors.deliveryWindowEnd && (
+                  <p className="mt-1 text-xs text-red-500">
+                    {errors.deliveryWindowEnd.message}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
           <SheetFooter className="gap-2 border-t pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>

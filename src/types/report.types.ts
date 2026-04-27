@@ -36,11 +36,24 @@ export interface MonthlyReportRow {
   lineTotal: number
 }
 
+export interface MonthlyReportDailyItem {
+  menuItemId: string
+  menuItemName: string
+  quantity: number
+  unitPrice: number
+}
+
+export interface MonthlyReportDay {
+  date: string
+  items: MonthlyReportDailyItem[]
+}
+
 export interface MonthlyReport {
   companyId: string
   companyName: string
   month: string
   rows: MonthlyReportRow[]
+  days: MonthlyReportDay[]
   totalOrders: number
   totalAmount: number
   notDeliveredOrders: number

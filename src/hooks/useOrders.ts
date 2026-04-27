@@ -36,8 +36,7 @@ export function useCreateOrder() {
 export function useRejectOrder() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ orderId, reason }: { orderId: string; reason?: string }) =>
-      rejectOrder(orderId, reason),
+    mutationFn: (orderId: string) => rejectOrder(orderId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['orders'] })
       qc.invalidateQueries({ queryKey: ['kitchen-prep'] })

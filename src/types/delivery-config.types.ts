@@ -1,7 +1,19 @@
-export type DeliveryStatus = 'ordering_open' | 'on_the_way' | 'delivered'
+export type DeliveryStatus = 'idle' | 'on_the_way' | 'arrived' | 'delivered'
 
 export interface CutoffConfig {
   cutoffTime: string
   deliveryStatus: DeliveryStatus
   updatedAt: string
+}
+
+export interface CompanyDeliveryWindow {
+  companyId: string
+  companyName: string
+  deliveryWindowStart: string | null
+  deliveryWindowEnd: string | null
+}
+
+export interface DeliveryConfig {
+  cutoffTime: string
+  companyDeliveryWindows: CompanyDeliveryWindow[]
 }

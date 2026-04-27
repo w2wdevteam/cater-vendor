@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
+  Building2,
   Package,
-  Plus,
   ShoppingCart,
   XCircle,
 } from 'lucide-react'
@@ -10,8 +10,10 @@ import { toast } from 'sonner'
 import PageHeader from '@/components/common/PageHeader'
 import EmptyState from '@/components/common/EmptyState'
 import StatusBadge from '@/components/common/StatusBadge'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   Select,
   SelectContent,
@@ -19,58 +21,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Textarea } from '@/components/ui/textarea'
 import { useOrders, useRejectOrder } from '@/hooks/useOrders'
 import { useCompanies } from '@/hooks/useCompanies'
-import { getAvailableMenuItems } from '@/services/orders.service'
+import { useMenuItemsLookup } from '@/hooks/useLookups'
+import { useDebounce } from '@/hooks/useDebounce'
 import type { OrderFilters } from '@/types/order.types'
 import { formatDateTime, formatCurrency } from '@/lib/utils'
+import { getApiErrorMessage } from '@/lib/api-errors'
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10)
+}
 
 export default function OrdersPage() {
+  const navigate = useNavigate()
   const [filters, setFilters] = useState<OrderFilters>({
+    date: todayKey(),
     companyId: 'all',
     status: 'all',
     menuItemId: 'all',
     search: '',
   })
-  const { data: orders, isLoading } = useOrders(filters)
+  const debouncedSearch = useDebounce(filters.search, 1000)
+  const { data: orders, isLoading } = useOrders({ ...filters, search: debouncedSearch })
   const { data: companies } = useCompanies()
   const rejectMutation = useRejectOrder()
-  const menuItemsList = getAvailableMenuItems()
+  const { data: menuItemsList = [] } = useMenuItemsLookup({ status: 'active' })
 
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [rejectOrderId, setRejectOrderId] = useState<string | null>(null)
-  const [rejectReason, setRejectReason] = useState('')
 
   useEffect(() => {
     document.title = 'Orders — Catering Admin'
   }, [])
 
-  function openRejectDialog(orderId: string) {
-    setRejectOrderId(orderId)
-    setRejectReason('')
-    setRejectDialogOpen(true)
-  }
-
   async function handleReject() {
     if (!rejectOrderId) return
     try {
-      await rejectMutation.mutateAsync({
-        orderId: rejectOrderId,
-        reason: rejectReason || undefined,
-      })
+      await rejectMutation.mutateAsync(rejectOrderId)
       toast.success('Order rejected')
-      setRejectDialogOpen(false)
-    } catch {
-      toast.error('Failed to reject order')
+      setRejectOrderId(null)
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to reject order'))
     }
   }
 
@@ -78,13 +69,11 @@ export default function OrdersPage() {
     <>
       <PageHeader
         title="Orders"
-        subtitle="Today's orders across all companies."
+        subtitle="Orders placed across all companies. Defaults to today — clear the date to see all."
         action={
-          <Button asChild>
-            <Link to="/orders/create">
-              <Plus className="h-4 w-4" />
-              Place Order
-            </Link>
+          <Button onClick={() => navigate('/orders/create')}>
+            <Building2 className="h-4 w-4" />
+            Place Order
           </Button>
         }
       />
@@ -99,6 +88,24 @@ export default function OrdersPage() {
             }
             className="max-w-[240px]"
           />
+          <div className="flex items-center gap-1">
+            <DatePicker
+              value={filters.date}
+              onChange={(v) => setFilters((f) => ({ ...f, date: v }))}
+              placeholder="All dates"
+              className="w-[180px]"
+            />
+            {filters.date && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilters((f) => ({ ...f, date: '' }))}
+                title="Clear date filter"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
           <Select
             value={filters.companyId}
             onValueChange={(v) =>
@@ -175,7 +182,8 @@ export default function OrdersPage() {
                   <th className="px-6 py-3">Company</th>
                   <th className="px-6 py-3">Department</th>
                   <th className="px-6 py-3">Menu Item</th>
-                  <th className="px-6 py-3 text-right">Price</th>
+                  <th className="px-6 py-3 text-right">Qty</th>
+                  <th className="px-6 py-3 text-right">Total</th>
                   <th className="px-6 py-3">Status</th>
                   <th className="px-6 py-3">Time</th>
                   <th className="px-6 py-3" />
@@ -213,7 +221,10 @@ export default function OrdersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right text-sm text-gray-700">
-                      {formatCurrency(order.menuItemPrice)}
+                      {order.quantity}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-gray-700">
+                      {formatCurrency(order.menuItemPrice * order.quantity)}
                     </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={order.status} />
@@ -228,7 +239,7 @@ export default function OrdersPage() {
                             variant="ghost"
                             size="sm"
                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => openRejectDialog(order.id)}
+                            onClick={() => setRejectOrderId(order.id)}
                           >
                             <XCircle className="h-3.5 w-3.5" />
                             Reject
@@ -247,9 +258,10 @@ export default function OrdersPage() {
                 filters.search ||
                 filters.companyId !== 'all' ||
                 filters.status !== 'all' ||
-                filters.menuItemId !== 'all'
+                filters.menuItemId !== 'all' ||
+                filters.date
                   ? 'Try adjusting your search or filters.'
-                  : 'No orders have been placed today.'
+                  : 'No orders have been placed yet.'
               }
             />
           )}
@@ -266,47 +278,23 @@ export default function OrdersPage() {
               {formatCurrency(
                 orders
                   .filter((o) => o.status !== 'rejected')
-                  .reduce((sum, o) => sum + o.menuItemPrice, 0),
+                  .reduce((sum, o) => sum + o.menuItemPrice * o.quantity, 0),
               )}
             </div>
           </div>
         )}
       </div>
 
-      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject Order</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to reject this order? The employee will be
-              notified.
-            </DialogDescription>
-          </DialogHeader>
-          <div>
-            <Textarea
-              placeholder="Reason for rejection (optional)"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRejectDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleReject}
-              disabled={rejectMutation.isPending}
-            >
-              {rejectMutation.isPending ? 'Rejecting...' : 'Reject Order'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={!!rejectOrderId}
+        onOpenChange={(open) => { if (!open) setRejectOrderId(null) }}
+        title="Reject Order"
+        description="Are you sure you want to reject this order? The employee will be notified."
+        confirmLabel="Reject Order"
+        destructive
+        loading={rejectMutation.isPending}
+        onConfirm={handleReject}
+      />
     </>
   )
 }

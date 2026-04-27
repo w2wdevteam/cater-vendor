@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  createCompany,
   getCompanies,
   getCompanyById,
-  createCompany,
+  setCompanyStatus,
   updateCompany,
 } from '@/services/companies.service'
 import { getDepartments, getCompanyDepartments } from '@/services/departments.service'
@@ -29,6 +30,7 @@ export function useCreateCompany() {
     mutationFn: (data: CompanyFormData) => createCompany(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['companies'] })
+      qc.invalidateQueries({ queryKey: ['lookup', 'companies'] })
     },
   })
 }
@@ -38,9 +40,23 @@ export function useUpdateCompany() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: CompanyFormData }) =>
       updateCompany(id, data),
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['companies'] })
-      qc.invalidateQueries({ queryKey: ['company'] })
+      qc.invalidateQueries({ queryKey: ['company', vars.id] })
+      qc.invalidateQueries({ queryKey: ['lookup', 'companies'] })
+    },
+  })
+}
+
+export function useSetCompanyStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'active' | 'inactive' }) =>
+      setCompanyStatus(id, status),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['companies'] })
+      qc.invalidateQueries({ queryKey: ['company', vars.id] })
+      qc.invalidateQueries({ queryKey: ['lookup', 'companies'] })
     },
   })
 }

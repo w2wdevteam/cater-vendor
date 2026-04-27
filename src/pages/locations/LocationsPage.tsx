@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select'
 import { useLocations, useCreateLocation, useUpdateLocation } from '@/hooks/useLocations'
 import { useCompanies } from '@/hooks/useCompanies'
+import { getApiErrorMessage } from '@/lib/api-errors'
 import type { DeliveryLocation, LocationFormData } from '@/types/location.types'
 import LocationSheet from './LocationSheet'
 
@@ -49,7 +50,7 @@ export default function LocationsPage() {
         toast.success('Location created')
         setSheetOpen(false)
       },
-      onError: () => toast.error('Failed to create location'),
+      onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to create location')),
     })
   }
 
@@ -62,7 +63,7 @@ export default function LocationsPage() {
           toast.success('Location updated')
           setEditingLocation(null)
         },
-        onError: () => toast.error('Failed to update location'),
+        onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to update location')),
       },
     )
   }
