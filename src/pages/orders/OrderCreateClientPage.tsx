@@ -9,6 +9,7 @@ import {
   UserCheck,
   UtensilsCrossed,
 } from 'lucide-react'
+import { format } from 'date-fns'
 import { toast } from 'sonner'
 import PageHeader from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -21,14 +22,14 @@ import {
   useCateringClientsByPhone,
   type CateringClient,
 } from '@/hooks/useCateringClients'
-import { useCreateClientOrder } from '@/hooks/useClientOrders'
+import { useCreateBulkClientOrder } from '@/hooks/useOrders'
 import { useDebounce } from '@/hooks/useDebounce'
 import { formatCurrency } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-errors'
 import MenuItemCard from './MenuItemCard'
 
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10)
+  return format(new Date(), 'yyyy-MM-dd')
 }
 
 interface CartItem {
@@ -38,7 +39,7 @@ interface CartItem {
 
 export default function OrderCreateClientPage() {
   const navigate = useNavigate()
-  const createMutation = useCreateClientOrder()
+  const createMutation = useCreateBulkClientOrder()
 
   const [date, setDate] = useState<string>(todayKey())
   const [phone, setPhone] = useState('')
@@ -158,7 +159,7 @@ export default function OrderCreateClientPage() {
             ? 'Client order placed'
             : `${cart.length} orders placed`,
       )
-      navigate('/orders/clients')
+      navigate('/orders?tab=mine')
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to place client order'))
     }
@@ -170,7 +171,7 @@ export default function OrderCreateClientPage() {
         title="Place Client Order"
         subtitle="Place an order for an external catering client (walk-in or event booking)."
         action={
-          <Button variant="outline" onClick={() => navigate('/orders')}>
+          <Button variant="outline" onClick={() => navigate('/orders?tab=mine')}>
             <ArrowLeft className="h-4 w-4" />
             Back to orders
           </Button>
@@ -360,7 +361,7 @@ export default function OrderCreateClientPage() {
                 type="button"
                 variant="ghost"
                 className="w-full"
-                onClick={() => navigate('/orders')}
+                onClick={() => navigate('/orders?tab=mine')}
               >
                 Cancel
               </Button>

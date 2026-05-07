@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 const statusStyles: Record<string, string> = {
@@ -31,9 +32,11 @@ const statusLabels: Record<string, string> = {
 interface StatusBadgeProps {
   status: string
   className?: string
+  /** Override the rendered label (default: built-in label for status). */
+  children?: ReactNode
 }
 
-export default function StatusBadge({ status, className }: StatusBadgeProps) {
+export default function StatusBadge({ status, className, children }: StatusBadgeProps) {
   return (
     <span
       className={cn(
@@ -42,7 +45,7 @@ export default function StatusBadge({ status, className }: StatusBadgeProps) {
         className,
       )}
     >
-      {statusLabels[status] ?? status}
+      {children ?? statusLabels[status] ?? status}
     </span>
   )
 }

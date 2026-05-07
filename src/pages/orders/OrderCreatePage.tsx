@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Minus, Plus, Trash2, UtensilsCrossed } from 'lucide-react'
+import { format } from 'date-fns'
 import { toast } from 'sonner'
 import PageHeader from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -15,14 +16,14 @@ import {
 } from '@/components/ui/select'
 import { useCompanies } from '@/hooks/useCompanies'
 import { useLocations } from '@/hooks/useLocations'
-import { useCreateOrder } from '@/hooks/useOrders'
+import { useCreateBulkCompanyOrder } from '@/hooks/useOrders'
 import { useDayAssignments } from '@/hooks/useMenus'
 import { formatCurrency } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-errors'
 import MenuItemCard from './MenuItemCard'
 
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10)
+  return format(new Date(), 'yyyy-MM-dd')
 }
 
 // Cart item: a menu item queued for submission with its desired quantity.
@@ -34,7 +35,7 @@ interface CartItem {
 export default function OrderCreatePage() {
   const navigate = useNavigate()
   const { data: companies } = useCompanies()
-  const createMutation = useCreateOrder()
+  const createMutation = useCreateBulkCompanyOrder()
 
   const [companyId, setCompanyId] = useState('')
   const [locationId, setLocationId] = useState('')
@@ -119,7 +120,6 @@ export default function OrderCreatePage() {
           companyId,
           menuItemId: item.menuItemId,
           quantity: item.quantity,
-          locationId,
           date,
         })
       } catch (err) {
@@ -137,7 +137,7 @@ export default function OrderCreatePage() {
       toast.success(
         succeeded === 1 ? 'Order placed successfully' : `${succeeded} orders placed`,
       )
-      navigate('/orders')
+      navigate('/orders?tab=mine')
       return
     }
 
@@ -158,7 +158,7 @@ export default function OrderCreatePage() {
         title="Place Order"
         subtitle="Place one or more orders for a company."
         action={
-          <Button variant="outline" onClick={() => navigate('/orders')}>
+          <Button variant="outline" onClick={() => navigate('/orders?tab=mine')}>
             <ArrowLeft className="h-4 w-4" />
             Back to orders
           </Button>
@@ -288,7 +288,7 @@ export default function OrderCreatePage() {
                 type="button"
                 variant="ghost"
                 className="w-full"
-                onClick={() => navigate('/orders')}
+                onClick={() => navigate('/orders?tab=mine')}
               >
                 Cancel
               </Button>

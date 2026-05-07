@@ -58,30 +58,6 @@ export interface CreateClientOrderResponse {
   paymentId?: string
 }
 
-export interface OrderListQuery {
-  page?: number
-  limit?: number
-  sortBy?: string
-  order?: 'asc' | 'desc'
-  search?: string
-  date?: string
-  dateFrom?: string
-  dateTo?: string
-  companyId?: string
-  departmentId?: string
-  menuItemId?: string
-  status?: ApiOrderStatus
-}
-
-export interface CreateOrderBody {
-  companyId: string
-  menuItemId: string
-  employeeId?: string
-  date?: string
-  isCompanyLevel?: boolean
-  quantity?: number
-}
-
 export interface KitchenPrepEntry {
   menuItemId: string
   menuItemName: string
@@ -93,40 +69,102 @@ export interface KitchenPrepEntry {
   }>
 }
 
+// ---------------------------------------------------------------------------
+// Unified Orders page — incoming (aggregated) + mine (cater-placed bulk).
+// ---------------------------------------------------------------------------
+
+export type IncomingSource = 'bot' | 'company_admin'
+
+export interface IncomingAggregatedRow {
+  id: string
+  date: string
+  companyId: string
+  companyName: string
+  menuItemId: string
+  menuItemName: string
+  totalQty: number
+  statusCounts: Partial<Record<ApiOrderStatus, number>>
+  sources: IncomingSource[]
+  lastActivityAt: string
+}
+
+export interface IncomingResponse {
+  date: string
+  rows: IncomingAggregatedRow[]
+  totalActiveQty: number
+}
+
+export interface RejectIncomingBody {
+  date: string
+  companyId: string
+  menuItemId: string
+  reason?: string
+}
+
+export interface RejectIncomingResponse {
+  rejectedCount: number
+  row: IncomingAggregatedRow | null
+}
+
+export type MineOrderType = 'all' | 'company' | 'client'
+
+export interface MineFilterQuery {
+  date?: string
+  type?: MineOrderType
+  q?: string
+  page?: number
+  limit?: number
+}
+
+export interface CreateBulkCompanyOrderBody {
+  companyId: string
+  menuItemId: string
+  quantity: number
+  date?: string
+}
+
 export const ordersApi = {
-  list: (params: OrderListQuery = {}): Promise<ListResult<ApiOrder>> =>
-    apiClient.get('/cater-admin/orders', { params }).then((r) => unwrapList<ApiOrder>(r)),
-
-  get: (id: string): Promise<ApiOrder> =>
-    apiClient.get<ApiOrder>(`/cater-admin/orders/${id}`).then(unwrap<ApiOrder>),
-
-  create: (body: CreateOrderBody): Promise<ApiOrder> =>
-    apiClient.post<ApiOrder>('/cater-admin/orders', body).then(unwrap<ApiOrder>),
-
-  reject: (id: string): Promise<ApiOrder> =>
-    apiClient
-      .patch<ApiOrder>(`/cater-admin/orders/${id}/reject`, {})
-      .then(unwrap<ApiOrder>),
-
   kitchenPrep: (date?: string): Promise<KitchenPrepEntry[]> =>
     apiClient
-      .get<{ data: KitchenPrepEntry[] }>('/cater-admin/orders/kitchen-prep', {
+      .get<{
+        data: { date: string; items: KitchenPrepEntry[]; totalOrders: number }
+      }>('/cater-admin/orders/kitchen-prep', {
         params: date ? { date } : undefined,
       })
-      .then(unwrap<KitchenPrepEntry[]>),
+      .then((r) => r.data.data.items),
 
-  listClients: (params: OrderListQuery = {}): Promise<ListResult<ApiOrder>> =>
+  // -------- Unified Orders page --------
+
+  incoming: (params: { date?: string; q?: string } = {}): Promise<IncomingResponse> =>
     apiClient
-      .get('/cater-admin/orders/clients', { params })
+      .get<IncomingResponse>('/cater-admin/orders/incoming', { params })
+      .then(unwrap<IncomingResponse>),
+
+  rejectIncoming: (body: RejectIncomingBody): Promise<RejectIncomingResponse> =>
+    apiClient
+      .post<RejectIncomingResponse>('/cater-admin/orders/incoming/reject', body)
+      .then(unwrap<RejectIncomingResponse>),
+
+  listMine: (params: MineFilterQuery = {}): Promise<ListResult<ApiOrder>> =>
+    apiClient
+      .get('/cater-admin/orders/mine', { params })
       .then((r) => unwrapList<ApiOrder>(r)),
 
-  getClient: (id: string): Promise<ApiOrder> =>
+  createBulkCompany: (body: CreateBulkCompanyOrderBody): Promise<ApiOrder> =>
     apiClient
-      .get<ApiOrder>(`/cater-admin/orders/clients/${id}`)
+      .post<ApiOrder>('/cater-admin/orders/mine/company', body)
       .then(unwrap<ApiOrder>),
 
-  createClient: (body: CreateClientOrderBody): Promise<CreateClientOrderResponse> =>
+  createBulkClient: (body: CreateClientOrderBody): Promise<CreateClientOrderResponse> =>
     apiClient
-      .post<CreateClientOrderResponse>('/cater-admin/orders/clients', body)
+      .post<CreateClientOrderResponse>('/cater-admin/orders/mine/client', body)
       .then(unwrap<CreateClientOrderResponse>),
+
+  rejectMine: (id: string, reason?: string): Promise<ApiOrder> =>
+    apiClient
+      .patch<ApiOrder>(`/cater-admin/orders/mine/${id}/reject`, { rejectionReason: reason })
+      .then(unwrap<ApiOrder>),
+
+  deleteMine: (id: string): Promise<void> =>
+    apiClient.delete(`/cater-admin/orders/mine/${id}`).then(() => undefined),
 }

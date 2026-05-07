@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Building2, ChevronRight, MapPin, Pencil, Plus, Users } from 'lucide-react'
+import { Building2, ChevronRight, CreditCard, MapPin, Pencil, Plus, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import PageHeader from '@/components/common/PageHeader'
 import EmptyState from '@/components/common/EmptyState'
@@ -24,6 +24,7 @@ import { formatCurrency } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-errors'
 import type { Company, CompanyFilters, CompanyFormData } from '@/types/company.types'
 import CompanySheet from './CompanySheet'
+import RecordPaymentDialog from '@/components/common/RecordPaymentDialog'
 
 export default function CompaniesPage() {
   const [filters, setFilters] = useState<CompanyFilters>({
@@ -37,6 +38,7 @@ export default function CompaniesPage() {
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editCompany, setEditCompany] = useState<Company | null>(null)
+  const [paymentTarget, setPaymentTarget] = useState<Company | null>(null)
 
   useEffect(() => {
     document.title = 'Companies — Catering Admin'
@@ -214,6 +216,15 @@ export default function CompaniesPage() {
                             <Pencil className="h-4 w-4" />
                           </button>
                         )}
+                        {company.status === 'active' && (
+                          <button
+                            onClick={() => setPaymentTarget(company)}
+                            className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                            title="Record payment"
+                          >
+                            <CreditCard className="h-4 w-4" />
+                          </button>
+                        )}
                         <Link
                           to={`/companies/${company.id}`}
                           className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -246,6 +257,16 @@ export default function CompaniesPage() {
         company={editCompany}
         onSubmit={handleSubmit}
         loading={createMut.isPending || updateMut.isPending}
+      />
+
+      <RecordPaymentDialog
+        open={paymentTarget !== null}
+        onOpenChange={(open) => !open && setPaymentTarget(null)}
+        preset={
+          paymentTarget
+            ? { type: 'company', id: paymentTarget.id, name: paymentTarget.name }
+            : null
+        }
       />
     </>
   )

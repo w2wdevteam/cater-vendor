@@ -26,7 +26,8 @@ export interface Payment {
 }
 
 export interface CreatePaymentInput {
-  companyId: string
+  companyId?: string
+  cateringClientId?: string
   amount: number
   method: PaymentMethod
   paidAt: string

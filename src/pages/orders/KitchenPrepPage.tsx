@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ChefHat, Printer, UtensilsCrossed } from 'lucide-react'
+import { format } from 'date-fns'
 import PageHeader from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -7,7 +8,7 @@ import { useKitchenPrep } from '@/hooks/useOrders'
 import { formatDate } from '@/lib/utils'
 
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10)
+  return format(new Date(), 'yyyy-MM-dd')
 }
 
 export default function KitchenPrepPage() {

@@ -52,7 +52,6 @@ const navigation: (NavItem | NavGroup)[] = [
       { label: 'Menu Calendar', path: '/menus/calendar', icon: CalendarRange },
       { label: 'Menu Templates', path: '/menus/templates', icon: LayoutTemplate },
       { label: 'Orders', path: '/orders', icon: ShoppingCart },
-      { label: 'Client Orders', path: '/orders/clients', icon: UserPlus },
       { label: 'Kitchen Prep', path: '/orders/kitchen-prep', icon: ChefHat },
     ],
   },
@@ -104,8 +103,13 @@ export default function Sidebar() {
   function isActive(path: string) {
     if (path === '/dashboard') return location.pathname === '/dashboard'
     if (path === '/orders/kitchen-prep') return location.pathname === '/orders/kitchen-prep'
-    if (path === '/orders/clients') return location.pathname === '/orders/clients' || location.pathname === '/orders/create-client'
-    if (path === '/orders') return location.pathname === '/orders' || location.pathname === '/orders/create'
+    if (path === '/orders') {
+      return (
+        location.pathname === '/orders' ||
+        location.pathname === '/orders/create' ||
+        location.pathname === '/orders/create-client'
+      )
+    }
     if (path === '/menus/calendar') return location.pathname === '/menus/calendar'
     if (path === '/menus/templates') return location.pathname === '/menus/templates'
     if (path === '/menus') return location.pathname === '/menus' || location.pathname === '/menus/create' || location.pathname.startsWith('/menus/') && location.pathname.endsWith('/edit')

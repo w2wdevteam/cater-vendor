@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2, UserRound } from 'lucide-react'
+import { CreditCard, Pencil, Plus, Trash2, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import PageHeader from '@/components/common/PageHeader'
 import EmptyState from '@/components/common/EmptyState'
@@ -25,6 +25,7 @@ import {
 } from '@/hooks/useCateringClients'
 import { formatCurrency } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-errors'
+import RecordPaymentDialog from '@/components/common/RecordPaymentDialog'
 
 interface FormState {
   name: string
@@ -60,6 +61,7 @@ export default function ClientsPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
 
   const [deleteTarget, setDeleteTarget] = useState<CateringClient | null>(null)
+  const [paymentTarget, setPaymentTarget] = useState<CateringClient | null>(null)
 
   useEffect(() => {
     document.title = 'Clients — Catering Admin'
@@ -202,6 +204,13 @@ export default function ClientsPage() {
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => setPaymentTarget(c)}
+                          className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                          title="Record payment"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                        </button>
+                        <button
                           onClick={() => setDeleteTarget(c)}
                           className="rounded p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600"
                           title="Delete"
@@ -333,6 +342,16 @@ export default function ClientsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <RecordPaymentDialog
+        open={paymentTarget !== null}
+        onOpenChange={(open) => !open && setPaymentTarget(null)}
+        preset={
+          paymentTarget
+            ? { type: 'client', id: paymentTarget.id, name: paymentTarget.name }
+            : null
+        }
+      />
     </>
   )
 }

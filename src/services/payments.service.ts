@@ -56,6 +56,7 @@ export async function createPayment(input: CreatePaymentInput): Promise<Payment>
   return mapPayment(
     await paymentsApi.create({
       companyId: input.companyId,
+      cateringClientId: input.cateringClientId,
       amount: input.amount,
       method: input.method,
       paidAt: input.paidAt,

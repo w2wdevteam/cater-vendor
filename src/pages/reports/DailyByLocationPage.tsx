@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { DatePicker } from '@/components/ui/date-picker'
-import ExportButtons from '@/components/common/ExportButtons'
 import { useDailyByLocationReport } from '@/hooks/useReports'
 import type { MenuBreakdownItem } from '@/types/report.types'
 
@@ -33,10 +32,7 @@ export default function DailyByLocationPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <DatePicker value={date} onChange={(v) => setDate(v)} className="w-[200px]" />
-        <ExportButtons filename={`daily-by-location-${date}`} />
-      </div>
+      <DatePicker value={date} onChange={(v) => setDate(v)} className="w-[200px]" />
 
       <div className="rounded-lg border bg-white shadow-sm">
         <table className="w-full">

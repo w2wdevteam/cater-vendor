@@ -28,8 +28,13 @@ export interface PaymentListQuery {
   dateTo?: string
 }
 
+/**
+ * Provide EITHER companyId OR cateringClientId — never both, never neither.
+ * The backend enforces the XOR and rejects invalid combinations with 400.
+ */
 export interface CreatePaymentBody {
-  companyId: string
+  companyId?: string
+  cateringClientId?: string
   amount: number
   method: PaymentMethod
   paidAt: string

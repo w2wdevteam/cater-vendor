@@ -3,10 +3,8 @@ import { CreditCard, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import PageHeader from '@/components/common/PageHeader'
 import EmptyState from '@/components/common/EmptyState'
+import RecordPaymentDialog from '@/components/common/RecordPaymentDialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
   Select,
@@ -24,19 +22,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useCompanies } from '@/hooks/useCompanies'
-import {
-  usePayments,
-  useCreatePayment,
-  useDeletePayment,
-} from '@/hooks/usePayments'
+import { usePayments, useDeletePayment } from '@/hooks/usePayments'
 import {
   PAYMENT_METHODS,
-  type PaymentMethod,
   type PaymentRecipientType,
 } from '@/types/payment.types'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-errors'
-import { format } from 'date-fns'
 
 export default function PaymentsPage() {
   const { data: companies } = useCompanies()
@@ -53,15 +45,9 @@ export default function PaymentsPage() {
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
   })
-  const createMutation = useCreatePayment()
   const deleteMutation = useDeletePayment()
 
   const [createOpen, setCreateOpen] = useState(false)
-  const [formCompanyId, setFormCompanyId] = useState('')
-  const [formAmount, setFormAmount] = useState('')
-  const [formMethod, setFormMethod] = useState<PaymentMethod>('cash')
-  const [formPaidAt, setFormPaidAt] = useState(format(new Date(), 'yyyy-MM-dd'))
-  const [formNote, setFormNote] = useState('')
 
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const deleteTarget = payments?.find((p) => p.id === deleteId)
@@ -77,36 +63,8 @@ export default function PaymentsPage() {
 
   const activeCompanies = companies?.filter((c) => c.status === 'active') ?? []
 
-  function resetForm() {
-    setFormCompanyId('')
-    setFormAmount('')
-    setFormMethod('cash')
-    setFormPaidAt(format(new Date(), 'yyyy-MM-dd'))
-    setFormNote('')
-  }
-
   function openCreate() {
-    resetForm()
     setCreateOpen(true)
-  }
-
-  async function handleCreate() {
-    const amount = parseFloat(formAmount)
-    if (!formCompanyId || !formPaidAt || !amount || amount <= 0) return
-    try {
-      await createMutation.mutateAsync({
-        companyId: formCompanyId,
-        amount,
-        method: formMethod,
-        paidAt: formPaidAt,
-        note: formNote.trim() || undefined,
-      })
-      toast.success('Payment recorded')
-      setCreateOpen(false)
-      resetForm()
-    } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Failed to record payment'))
-    }
   }
 
   async function handleDelete() {
@@ -120,19 +78,13 @@ export default function PaymentsPage() {
     }
   }
 
-  const canSubmit =
-    !!formCompanyId &&
-    !!formPaidAt &&
-    parseFloat(formAmount) > 0 &&
-    !createMutation.isPending
-
   return (
     <>
       <PageHeader
         title="Payments"
-        subtitle="Record and track payments received from companies."
+        subtitle="Record and track payments received from companies and clients."
         action={
-          <Button onClick={openCreate} disabled={activeCompanies.length === 0}>
+          <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />
             New Payment
           </Button>
@@ -303,108 +255,16 @@ export default function PaymentsPage() {
                 : 'Record your first payment to get started.'
             }
             action={
-              activeCompanies.length > 0 ? (
-                <Button onClick={openCreate}>
-                  <Plus className="h-4 w-4" />
-                  New Payment
-                </Button>
-              ) : undefined
+              <Button onClick={openCreate}>
+                <Plus className="h-4 w-4" />
+                New Payment
+              </Button>
             }
           />
         )}
       </div>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
-            <DialogDescription>
-              Record a payment received from a company. Amounts are in UZS.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Company</Label>
-              <Select value={formCompanyId} onValueChange={setFormCompanyId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeCompanies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Amount (UZS)</Label>
-                <Input
-                  type="number"
-                  step="1000"
-                  min="0"
-                  placeholder="0"
-                  value={formAmount}
-                  onChange={(e) => setFormAmount(e.target.value)}
-                />
-                {parseFloat(formAmount) > 0 && (
-                  <p className="text-xs text-gray-500">
-                    {formatCurrency(parseFloat(formAmount))}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label>Paid At</Label>
-                <DatePicker
-                  value={formPaidAt}
-                  onChange={setFormPaidAt}
-                  placeholder="Payment date"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Method</Label>
-              <Select
-                value={formMethod}
-                onValueChange={(v) => setFormMethod(v as PaymentMethod)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(PAYMENT_METHODS) as PaymentMethod[]).map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {PAYMENT_METHODS[m]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Note (optional)</Label>
-              <Textarea
-                value={formNote}
-                onChange={(e) => setFormNote(e.target.value)}
-                placeholder="Reference number, invoice link, etc."
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={!canSubmit}>
-              {createMutation.isPending ? 'Recording...' : 'Record Payment'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RecordPaymentDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <Dialog
         open={deleteId !== null}

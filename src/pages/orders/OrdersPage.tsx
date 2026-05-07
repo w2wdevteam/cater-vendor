@@ -1,67 +1,136 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import {
-  Building2,
-  Package,
-  ShoppingCart,
-  XCircle,
-} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Building2, UserPlus } from 'lucide-react'
+import { format } from 'date-fns'
 import { toast } from 'sonner'
 import PageHeader from '@/components/common/PageHeader'
-import EmptyState from '@/components/common/EmptyState'
-import StatusBadge from '@/components/common/StatusBadge'
 import ConfirmDialog from '@/components/common/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { useOrders, useRejectOrder } from '@/hooks/useOrders'
-import { useCompanies } from '@/hooks/useCompanies'
-import { useMenuItemsLookup } from '@/hooks/useLookups'
+import { cn } from '@/lib/utils'
 import { useDebounce } from '@/hooks/useDebounce'
-import type { OrderFilters } from '@/types/order.types'
-import { formatDateTime, formatCurrency } from '@/lib/utils'
+import {
+  useDeleteMyOrder,
+  useIncomingOrders,
+  useMyOrders,
+  useRejectIncoming,
+  useRejectMyOrder,
+} from '@/hooks/useOrders'
 import { getApiErrorMessage } from '@/lib/api-errors'
+import IncomingOrdersTable from './_components/IncomingOrdersTable'
+import MyOrdersTable, { classifyOrder } from './_components/MyOrdersTable'
+import type { IncomingAggregatedRow } from '@/api/endpoints/orders.api'
+
+type Tab = 'incoming' | 'mine'
+type MyTypeFilter = 'all' | 'company' | 'client'
+
+const TAB_VALUES: Tab[] = ['incoming', 'mine']
 
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10)
+  // Use the browser's local timezone — matches what reports pages do.
+  return format(new Date(), 'yyyy-MM-dd')
 }
 
 export default function OrdersPage() {
   const navigate = useNavigate()
-  const [filters, setFilters] = useState<OrderFilters>({
-    date: todayKey(),
-    companyId: 'all',
-    status: 'all',
-    menuItemId: 'all',
-    search: '',
-  })
-  const debouncedSearch = useDebounce(filters.search, 1000)
-  const { data: orders, isLoading } = useOrders({ ...filters, search: debouncedSearch })
-  const { data: companies } = useCompanies()
-  const rejectMutation = useRejectOrder()
-  const { data: menuItemsList = [] } = useMenuItemsLookup({ status: 'active' })
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab') as Tab | null
+  const tab: Tab = TAB_VALUES.includes(tabParam as Tab) ? (tabParam as Tab) : 'mine'
 
-  const [rejectOrderId, setRejectOrderId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [dateFilter, setDateFilter] = useState<string>(todayKey())
+  const [myTypeFilter, setMyTypeFilter] = useState<MyTypeFilter>('all')
+  const debouncedSearch = useDebounce(search, 300)
+  const q = debouncedSearch.trim()
+
+  const incomingQuery = useIncomingOrders({ date: dateFilter, q: q || undefined })
+  const mineQuery = useMyOrders({
+    date: dateFilter,
+    type: myTypeFilter,
+    q: q || undefined,
+    limit: 100,
+  })
+
+  const rejectIncomingMutation = useRejectIncoming()
+  const rejectMineMutation = useRejectMyOrder()
+  const deleteMineMutation = useDeleteMyOrder()
+
+  const [rejectIncomingTarget, setRejectIncomingTarget] = useState<IncomingAggregatedRow | null>(null)
+  const [rejectMineId, setRejectMineId] = useState<string | null>(null)
+  const [deleteMineId, setDeleteMineId] = useState<string | null>(null)
 
   useEffect(() => {
     document.title = 'Orders — Catering Admin'
   }, [])
 
-  async function handleReject() {
-    if (!rejectOrderId) return
+  const incomingRows = incomingQuery.data?.rows ?? []
+  const totalActiveQty = incomingQuery.data?.totalActiveQty ?? 0
+  const mineOrders = mineQuery.data?.data ?? []
+
+  // Tab badge for "My Orders" reflects ALL types for the current date — independent
+  // of the chip filter (so the user can see counts even when narrowed to one type).
+  const allMineQuery = useMyOrders({ date: dateFilter, type: 'all', limit: 100 })
+  const allMineForCount = allMineQuery.data?.data ?? []
+  const mineTotalCount = allMineForCount.length
+  const mineTypeCounts = useMemo(() => {
+    const counts = { company: 0, client: 0, all: allMineForCount.length }
+    for (const o of allMineForCount) {
+      const t = classifyOrder(o)
+      counts[t]++
+    }
+    return counts
+  }, [allMineForCount])
+
+  const isToday = dateFilter === todayKey()
+  const filtersActive =
+    !!q || !isToday || (tab === 'mine' && myTypeFilter !== 'all')
+
+  function setTab(next: Tab) {
+    const params = new URLSearchParams(searchParams)
+    params.set('tab', next)
+    setSearchParams(params, { replace: true })
+  }
+
+  async function handleRejectIncoming() {
+    const target = rejectIncomingTarget
+    if (!target) return
     try {
-      await rejectMutation.mutateAsync(rejectOrderId)
+      const result = await rejectIncomingMutation.mutateAsync({
+        date: target.date,
+        companyId: target.companyId,
+        menuItemId: target.menuItemId,
+      })
+      toast.success(
+        result.rejectedCount > 0
+          ? `${result.rejectedCount} order${result.rejectedCount === 1 ? '' : 's'} rejected — employees will be notified`
+          : 'Nothing to reject — all orders already delivered or rejected',
+      )
+      setRejectIncomingTarget(null)
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to reject orders'))
+    }
+  }
+
+  async function handleRejectMine() {
+    if (!rejectMineId) return
+    try {
+      await rejectMineMutation.mutateAsync({ id: rejectMineId })
       toast.success('Order rejected')
-      setRejectOrderId(null)
+      setRejectMineId(null)
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to reject order'))
+    }
+  }
+
+  async function handleDeleteMine() {
+    if (!deleteMineId) return
+    try {
+      await deleteMineMutation.mutateAsync(deleteMineId)
+      toast.success('Order deleted')
+      setDeleteMineId(null)
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to delete order'))
     }
   }
 
@@ -69,232 +138,219 @@ export default function OrdersPage() {
     <>
       <PageHeader
         title="Orders"
-        subtitle="Orders placed across all companies. Defaults to today — clear the date to see all."
+        subtitle="Track incoming customer orders (aggregated by company × menu) and manage the bulk orders you place."
         action={
-          <Button onClick={() => navigate('/orders/create')}>
-            <Building2 className="h-4 w-4" />
-            Place Order
-          </Button>
+          tab === 'mine' ? (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => navigate('/orders/create')}>
+                <Building2 className="h-4 w-4" />
+                Order for Company
+              </Button>
+              <Button onClick={() => navigate('/orders/create-client')}>
+                <UserPlus className="h-4 w-4" />
+                Order for Client
+              </Button>
+            </div>
+          ) : null
         }
       />
 
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <Input
-            placeholder="Search by employee name"
-            value={filters.search}
-            onChange={(e) =>
-              setFilters((f) => ({ ...f, search: e.target.value }))
-            }
-            className="max-w-[240px]"
+      <div className="flex flex-col gap-4">
+        <nav className="flex items-center gap-6 border-b border-gray-200">
+          <TabButton
+            label="Incoming"
+            count={totalActiveQty}
+            active={tab === 'incoming'}
+            onClick={() => setTab('incoming')}
           />
-          <div className="flex items-center gap-1">
-            <DatePicker
-              value={filters.date}
-              onChange={(v) => setFilters((f) => ({ ...f, date: v }))}
-              placeholder="All dates"
-              className="w-[180px]"
+          <TabButton
+            label="My Orders"
+            count={mineTotalCount}
+            active={tab === 'mine'}
+            onClick={() => setTab('mine')}
+          />
+        </nav>
+
+        {tab === 'incoming' ? (
+          <div className="space-y-4">
+            <FilterBar
+              search={search}
+              setSearch={setSearch}
+              dateFilter={dateFilter}
+              setDateFilter={setDateFilter}
+              placeholder="Search by company or menu item"
             />
-            {filters.date && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilters((f) => ({ ...f, date: '' }))}
-                title="Clear date filter"
-              >
-                Clear
-              </Button>
-            )}
+            <IncomingOrdersTable
+              rows={incomingRows}
+              filtersActive={filtersActive}
+              loading={incomingQuery.isLoading}
+              onReject={(row) => setRejectIncomingTarget(row)}
+            />
           </div>
-          <Select
-            value={filters.companyId}
-            onValueChange={(v) =>
-              setFilters((f) => ({ ...f, companyId: v }))
-            }
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All companies</SelectItem>
-              {companies?.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={filters.status}
-            onValueChange={(v) =>
-              setFilters((f) => ({ ...f, status: v as OrderFilters['status'] }))
-            }
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="on_the_way">On the Way</SelectItem>
-              <SelectItem value="arrived">Arrived</SelectItem>
-              <SelectItem value="delivered">Delivered</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={filters.menuItemId}
-            onValueChange={(v) =>
-              setFilters((f) => ({ ...f, menuItemId: v }))
-            }
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All menu items</SelectItem>
-              {menuItemsList.map((item) => (
-                <SelectItem key={item.id} value={item.id}>
-                  {item.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="rounded-lg border bg-white shadow-sm">
-          {isLoading ? (
-            <div className="divide-y">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 px-6 py-4">
-                  <div className="h-4 w-32 animate-pulse rounded bg-gray-100" />
-                  <div className="h-4 w-24 animate-pulse rounded bg-gray-100" />
-                  <div className="h-4 w-36 animate-pulse rounded bg-gray-100" />
-                  <div className="h-4 w-20 animate-pulse rounded bg-gray-100" />
-                </div>
-              ))}
-            </div>
-          ) : orders && orders.length > 0 ? (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  <th className="px-6 py-3">Employee</th>
-                  <th className="px-6 py-3">Company</th>
-                  <th className="px-6 py-3">Department</th>
-                  <th className="px-6 py-3">Menu Item</th>
-                  <th className="px-6 py-3 text-right">Qty</th>
-                  <th className="px-6 py-3 text-right">Total</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">Time</th>
-                  <th className="px-6 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {orders.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="transition-colors hover:bg-gray-50"
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center gap-1">
+              {(['all', 'company', 'client'] as MyTypeFilter[]).map((v) => {
+                const count = mineTypeCounts[v]
+                const label = v === 'all' ? 'All' : v === 'company' ? 'For Companies' : 'For Clients'
+                const active = myTypeFilter === v
+                return (
+                  <button
+                    key={v}
+                    onClick={() => setMyTypeFilter(v)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                      active
+                        ? 'border-primary-200 bg-primary-50 text-primary-700'
+                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+                    )}
                   >
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-gray-900">
-                        {order.employeeName}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      {order.companyName}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {order.departmentName}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {order.menuItemImageUrl && (
-                          <img
-                            src={order.menuItemImageUrl}
-                            alt=""
-                            className="h-8 w-8 rounded object-cover"
-                          />
-                        )}
-                        <span className="text-sm text-gray-900">
-                          {order.menuItemName}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm text-gray-700">
-                      {order.quantity}
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm text-gray-700">
-                      {formatCurrency(order.menuItemPrice * order.quantity)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={order.status} />
-                    </td>
-                    <td className="px-6 py-4 text-xs text-gray-500">
-                      {formatDateTime(order.createdAt)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {order.status !== 'rejected' &&
-                        order.status !== 'delivered' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => setRejectOrderId(order.id)}
-                          >
-                            <XCircle className="h-3.5 w-3.5" />
-                            Reject
-                          </Button>
-                        )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <EmptyState
-              icon={<ShoppingCart className="h-12 w-12" />}
-              title="No orders found"
-              description={
-                filters.search ||
-                filters.companyId !== 'all' ||
-                filters.status !== 'all' ||
-                filters.menuItemId !== 'all' ||
-                filters.date
-                  ? 'Try adjusting your search or filters.'
-                  : 'No orders have been placed yet.'
-              }
+                    {label}
+                    <span
+                      className={cn(
+                        'rounded-full px-1.5 py-px text-[10px] font-semibold',
+                        active ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-500',
+                      )}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <FilterBar
+              search={search}
+              setSearch={setSearch}
+              dateFilter={dateFilter}
+              setDateFilter={setDateFilter}
+              placeholder="Search by company, client, or menu item"
             />
-          )}
-        </div>
-
-        {orders && orders.length > 0 && (
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <div className="flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5" />
-              {orders.length} order{orders.length !== 1 ? 's' : ''}
-            </div>
-            <div>
-              Total:{' '}
-              {formatCurrency(
-                orders
-                  .filter((o) => o.status !== 'rejected')
-                  .reduce((sum, o) => sum + o.menuItemPrice * o.quantity, 0),
-              )}
-            </div>
+            <MyOrdersTable
+              orders={mineOrders}
+              filtersActive={filtersActive}
+              loading={mineQuery.isLoading}
+              onReject={(id) => setRejectMineId(id)}
+              onDelete={(id) => setDeleteMineId(id)}
+            />
           </div>
         )}
       </div>
 
       <ConfirmDialog
-        open={!!rejectOrderId}
-        onOpenChange={(open) => { if (!open) setRejectOrderId(null) }}
-        title="Reject Order"
-        description="Are you sure you want to reject this order? The employee will be notified."
-        confirmLabel="Reject Order"
+        open={!!rejectIncomingTarget}
+        onOpenChange={(o) => { if (!o) setRejectIncomingTarget(null) }}
+        title="Reject all orders"
+        description={
+          rejectIncomingTarget
+            ? `Reject every non-delivered ${rejectIncomingTarget.menuItemName} order for ${rejectIncomingTarget.companyName}. Each affected employee will be notified.`
+            : ''
+        }
+        confirmLabel="Reject all"
         destructive
-        loading={rejectMutation.isPending}
-        onConfirm={handleReject}
+        loading={rejectIncomingMutation.isPending}
+        onConfirm={handleRejectIncoming}
+      />
+      <ConfirmDialog
+        open={!!rejectMineId}
+        onOpenChange={(o) => { if (!o) setRejectMineId(null) }}
+        title="Reject Order"
+        description="Mark this order as rejected. The customer will be notified."
+        confirmLabel="Reject"
+        destructive
+        loading={rejectMineMutation.isPending}
+        onConfirm={handleRejectMine}
+      />
+      <ConfirmDialog
+        open={!!deleteMineId}
+        onOpenChange={(o) => { if (!o) setDeleteMineId(null) }}
+        title="Delete Order"
+        description="This permanently removes the order from your records. This action cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        loading={deleteMineMutation.isPending}
+        onConfirm={handleDeleteMine}
       />
     </>
+  )
+}
+
+function FilterBar({
+  search,
+  setSearch,
+  dateFilter,
+  setDateFilter,
+  placeholder,
+}: {
+  search: string
+  setSearch: (v: string) => void
+  dateFilter: string
+  setDateFilter: (v: string) => void
+  placeholder: string
+}) {
+  const isToday = dateFilter === todayKey()
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Input
+        placeholder={placeholder}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="max-w-[280px]"
+      />
+      <div className="flex items-center gap-1">
+        <DatePicker
+          value={dateFilter}
+          onChange={(v) => setDateFilter(v || todayKey())}
+          placeholder="Pick a date"
+          className="w-[180px]"
+        />
+        {!isToday && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDateFilter(todayKey())}
+            title="Reset to today"
+          >
+            Today
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TabButton({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string
+  count: number
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'group relative inline-flex items-center gap-2 border-b-2 px-1 pb-3 pt-1 text-sm font-medium transition-colors -mb-px',
+        active
+          ? 'border-primary-600 text-primary-700'
+          : 'border-transparent text-gray-500 hover:text-gray-900',
+      )}
+    >
+      {label}
+      <span
+        className={cn(
+          'inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 py-px text-[11px] font-semibold tabular-nums',
+          active
+            ? 'bg-primary-100 text-primary-700'
+            : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200',
+        )}
+      >
+        {count}
+      </span>
+    </button>
   )
 }

@@ -13,7 +13,6 @@ import CompanyDetailPage from '@/pages/companies/CompanyDetailPage'
 import OrdersPage from '@/pages/orders/OrdersPage'
 import OrderCreatePage from '@/pages/orders/OrderCreatePage'
 import OrderCreateClientPage from '@/pages/orders/OrderCreateClientPage'
-import ClientOrdersPage from '@/pages/orders/ClientOrdersPage'
 import KitchenPrepPage from '@/pages/orders/KitchenPrepPage'
 import NotDeliveredPage from '@/pages/not-delivered/NotDeliveredPage'
 import NotDeliveredDetailPage from '@/pages/not-delivered/NotDeliveredDetailPage'
@@ -58,7 +57,6 @@ export const router = createBrowserRouter([
       { path: '/menus/:id/edit', element: <MenuEditPage /> },
       { path: '/orders', element: <OrdersPage /> },
       { path: '/orders/create', element: <OrderCreatePage /> },
-      { path: '/orders/clients', element: <ClientOrdersPage /> },
       { path: '/orders/create-client', element: <OrderCreateClientPage /> },
       { path: '/orders/kitchen-prep', element: <KitchenPrepPage /> },
 

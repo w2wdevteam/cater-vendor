@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { DatePicker } from '@/components/ui/date-picker'
-import ExportButtons from '@/components/common/ExportButtons'
 import { useDailyByMenuReport } from '@/hooks/useReports'
 
 export default function DailyByMenuPage() {
@@ -17,10 +16,7 @@ export default function DailyByMenuPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <DatePicker value={date} onChange={(v) => setDate(v)} className="w-[200px]" />
-        <ExportButtons filename={`daily-by-menu-${date}`} />
-      </div>
+      <DatePicker value={date} onChange={(v) => setDate(v)} className="w-[200px]" />
 
       <div className="rounded-lg border bg-white shadow-sm">
         <table className="w-full">
