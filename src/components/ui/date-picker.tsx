@@ -10,9 +10,17 @@ interface DatePickerProps {
   onChange?: (value: string) => void
   placeholder?: string
   className?: string
+  /** Matcher for dates that should be greyed out and unselectable. */
+  disabled?: (date: Date) => boolean
 }
 
-export function DatePicker({ value, onChange, placeholder = 'Pick a date', className }: DatePickerProps) {
+export function DatePicker({
+  value,
+  onChange,
+  placeholder = 'Pick a date',
+  className,
+  disabled,
+}: DatePickerProps) {
   const [open, setOpen] = useState(false)
 
   const selected = value ? parse(value, 'yyyy-MM-dd', new Date()) : undefined
@@ -42,6 +50,7 @@ export function DatePicker({ value, onChange, placeholder = 'Pick a date', class
           <Calendar
             mode="single"
             selected={isValidDate ? selected : undefined}
+            disabled={disabled}
             onSelect={(date) => {
               if (date) {
                 onChange?.(format(date, 'yyyy-MM-dd'))

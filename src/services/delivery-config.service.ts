@@ -46,6 +46,7 @@ export async function updateDeliveryStatus(status: DeliveryStatus): Promise<Cuto
     cutoffTime: config.cutoffTime ?? '',
     deliveryStatus: statusLog.status,
     updatedAt: new Date().toISOString(),
+    affectedOrderCount: statusLog.affectedOrderCount,
   }
 }
 

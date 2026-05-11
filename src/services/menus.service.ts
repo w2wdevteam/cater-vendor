@@ -163,6 +163,13 @@ export async function removeAssignment(assignmentId: string): Promise<void> {
   await menusApi.removeAssignment(assignmentId)
 }
 
+export async function updateAssignmentMaxOrders(
+  assignmentId: string,
+  maxOrders: number,
+): Promise<void> {
+  await menusApi.updateAssignment(assignmentId, { maxOrders })
+}
+
 export async function copyDay(sourceDate: string, targetDate: string): Promise<void> {
   await menusApi.copyDay({ sourceDate, targetDate })
 }

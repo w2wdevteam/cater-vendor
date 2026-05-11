@@ -18,6 +18,7 @@ import {
   removeAssignment,
   removeMenuItemImage,
   toggleMenuItemStatus,
+  updateAssignmentMaxOrders,
   updateMenuItem,
   updateTemplate,
   uploadMenuItemImage,
@@ -128,6 +129,17 @@ export function useRemoveAssignment() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (assignmentId: string) => removeAssignment(assignmentId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['menu-assignments'] })
+    },
+  })
+}
+
+export function useUpdateAssignmentMaxOrders() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ assignmentId, maxOrders }: { assignmentId: string; maxOrders: number }) =>
+      updateAssignmentMaxOrders(assignmentId, maxOrders),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['menu-assignments'] })
     },

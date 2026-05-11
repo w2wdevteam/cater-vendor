@@ -21,6 +21,7 @@ export interface ApiDeliveryStatusLog {
   startedAt: string | null
   arrivedAt: string | null
   deliveredAt: string | null
+  affectedOrderCount?: number
 }
 
 export const deliveryApi = {

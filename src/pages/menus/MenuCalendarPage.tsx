@@ -12,13 +12,16 @@ import {
 } from 'date-fns'
 import { toast } from 'sonner'
 import {
+  Check,
   ChevronLeft,
   ChevronRight,
   Copy,
   CopyPlus,
+  Pencil,
   Plus,
   Trash2,
   UtensilsCrossed,
+  X,
 } from 'lucide-react'
 import PageHeader from '@/components/common/PageHeader'
 import EmptyState from '@/components/common/EmptyState'
@@ -56,14 +59,171 @@ import {
   useMenuItems,
   useMonthAssignments,
   useRemoveAssignment,
+  useUpdateAssignmentMaxOrders,
 } from '@/hooks/useMenus'
 import { Input } from '@/components/ui/input'
 import { cn, formatCurrency } from '@/lib/utils'
 import { getApiErrorMessage } from '@/lib/api-errors'
 import type { DayAssignment } from '@/types/menu.types'
 
+type DayAssignmentItem = DayAssignment['items'][number]
+
 function toDateKey(date: Date): string {
   return format(date, 'yyyy-MM-dd')
+}
+
+function AssignmentRow({
+  item,
+  onRemove,
+  removing,
+}: {
+  item: DayAssignmentItem
+  onRemove: (assignmentId: string) => void
+  removing: boolean
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<number | ''>(item.maxOrders)
+  const update = useUpdateAssignmentMaxOrders()
+
+  // Floor: cannot drop the cap below the count of orders already placed.
+  // Backend also requires maxOrders >= 1, so clamp accordingly.
+  // Server is the final guard; this just prevents an obvious bad submit.
+  const floor = Math.max(1, item.currentOrders)
+
+  function handleSave() {
+    if (draft === '' || typeof draft !== 'number') return
+    if (draft === item.maxOrders) {
+      setEditing(false)
+      return
+    }
+    if (draft < floor) {
+      toast.error(
+        item.currentOrders > 0
+          ? `Cap cannot be below ${item.currentOrders} (orders already placed)`
+          : 'Cap must be at least 1',
+      )
+      return
+    }
+    update.mutate(
+      { assignmentId: item.assignmentId, maxOrders: draft },
+      {
+        onSuccess: () => {
+          toast.success('Cap updated')
+          setEditing(false)
+        },
+        onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to update cap')),
+      },
+    )
+  }
+
+  function handleCancel() {
+    setDraft(item.maxOrders)
+    setEditing(false)
+  }
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border bg-white p-3 shadow-sm">
+      {item.menuItem.imageUrl ? (
+        <img
+          src={item.menuItem.imageUrl}
+          alt={item.menuItem.name}
+          className="h-12 w-12 rounded object-cover"
+        />
+      ) : (
+        <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-100 text-gray-400">
+          <UtensilsCrossed className="h-5 w-5" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-gray-900 truncate">
+            {item.menuItem.name}
+          </p>
+          {item.isSoldOut && <StatusBadge status="sold_out" />}
+        </div>
+        {editing ? (
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-xs text-gray-500">
+              {item.currentOrders} ordered · cap
+            </span>
+            <Input
+              type="number"
+              min={floor}
+              value={draft}
+              onChange={(e) => {
+                const n = parseInt(e.target.value)
+                setDraft(Number.isNaN(n) ? '' : n)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave()
+                if (e.key === 'Escape') handleCancel()
+              }}
+              className="h-7 w-20 text-xs"
+              autoFocus
+              aria-label="Max orders"
+            />
+            {item.currentOrders > 0 && (
+              <span className="text-[11px] text-gray-400">
+                min {item.currentOrders}
+              </span>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500">
+            {formatCurrency(item.menuItem.price)}
+            <span className="ml-2">
+              · {item.currentOrders}/{item.maxOrders} orders
+            </span>
+          </p>
+        )}
+      </div>
+      {editing ? (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSave}
+            disabled={update.isPending}
+            aria-label="Save cap"
+          >
+            <Check className="h-4 w-4 text-green-600" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCancel}
+            disabled={update.isPending}
+            aria-label="Cancel"
+          >
+            <X className="h-4 w-4 text-gray-500" />
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setDraft(item.maxOrders)
+              setEditing(true)
+            }}
+            aria-label={`Edit cap for ${item.menuItem.name}`}
+          >
+            <Pencil className="h-4 w-4 text-gray-500" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onRemove(item.assignmentId)}
+            disabled={removing}
+            aria-label={`Remove ${item.menuItem.name}`}
+          >
+            <Trash2 className="h-4 w-4 text-red-600" />
+          </Button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function DayDetailSheet({
@@ -142,45 +302,12 @@ function DayDetailSheet({
             ))
           ) : day && day.items.length > 0 ? (
             day.items.map((item) => (
-              <div
+              <AssignmentRow
                 key={item.assignmentId}
-                className="flex items-center gap-3 rounded-lg border bg-white p-3 shadow-sm"
-              >
-                {item.menuItem.imageUrl ? (
-                  <img
-                    src={item.menuItem.imageUrl}
-                    alt={item.menuItem.name}
-                    className="h-12 w-12 rounded object-cover"
-                  />
-                ) : (
-                  <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-100 text-gray-400">
-                    <UtensilsCrossed className="h-5 w-5" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {item.menuItem.name}
-                    </p>
-                    {item.isSoldOut && <StatusBadge status="sold_out" />}
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    {formatCurrency(item.menuItem.price)}
-                    <span className="ml-2">
-                      · {item.currentOrders}/{item.maxOrders} orders
-                    </span>
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemove(item.assignmentId)}
-                  disabled={remove.isPending}
-                  aria-label={`Remove ${item.menuItem.name}`}
-                >
-                  <Trash2 className="h-4 w-4 text-red-600" />
-                </Button>
-              </div>
+                item={item}
+                onRemove={handleRemove}
+                removing={remove.isPending}
+              />
             ))
           ) : (
             <EmptyState
@@ -378,25 +505,28 @@ function CopyWeekDialog({
         <DialogHeader>
           <DialogTitle>Copy a week</DialogTitle>
           <DialogDescription>
-            Copy a full 7-day block starting from a date. Existing assignments
-            in the target week will be replaced.
+            Copy a full Monday–Sunday block. Both dates must be Mondays;
+            other days are disabled. Existing assignments in the target week
+            will be replaced.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Source week (start date)</Label>
+            <Label>Source week (Monday)</Label>
             <DatePicker
               value={source}
               onChange={(v) => setSource(v)}
-              placeholder="Select source week start"
+              placeholder="Select source Monday"
+              disabled={(date) => date.getDay() !== 1}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Target week (start date)</Label>
+            <Label>Target week (Monday)</Label>
             <DatePicker
               value={target}
               onChange={(v) => setTarget(v)}
-              placeholder="Select target week start"
+              placeholder="Select target Monday"
+              disabled={(date) => date.getDay() !== 1}
             />
           </div>
         </div>

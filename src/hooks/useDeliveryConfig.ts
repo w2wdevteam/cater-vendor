@@ -30,6 +30,8 @@ export function useUpdateDeliveryStatus() {
     mutationFn: (status: DeliveryStatus) => updateDeliveryStatus(status),
     onSuccess: (data) => {
       qc.setQueryData(['cutoff-time'], data)
+      qc.invalidateQueries({ queryKey: ['orders'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }

@@ -177,9 +177,14 @@ function DeliveryStatusSection() {
   function handleStatusChange(status: DeliveryStatus) {
     if (status === currentStatus) return
     updateStatus.mutate(status, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         const label = statusOptions.find((s) => s.value === status)?.label
-        toast.success(`Status updated to "${label}"`)
+        const count = data.affectedOrderCount ?? 0
+        toast.success(
+          count > 0
+            ? `Status updated to "${label}" — ${count} order${count === 1 ? '' : 's'} synced`
+            : `Status updated to "${label}"`,
+        )
       },
       onError: (err) => toast.error(getApiErrorMessage(err, 'Failed to update status')),
     })

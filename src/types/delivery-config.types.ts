@@ -4,6 +4,7 @@ export interface CutoffConfig {
   cutoffTime: string
   deliveryStatus: DeliveryStatus
   updatedAt: string
+  affectedOrderCount?: number
 }
 
 export interface CompanyDeliveryWindow {
